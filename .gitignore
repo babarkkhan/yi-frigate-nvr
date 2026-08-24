@@ -1,0 +1,34 @@
+# secrets - never commit
+secrets/*.env
+secrets/*.json
+!secrets/*.example
+
+# Frigate runtime state
+services/nvr/config/frigate.db*
+services/nvr/config/model_cache/
+services/nvr/config/.jwt_secret
+services/nvr/config/.exports/
+services/nvr/config/.timeline/
+services/nvr/config/.vacuum
+services/nvr/config/.search_stats.json
+services/nvr/config/backup.db
+services/nvr/config/backup_config.yaml
+services/nvr/config/go2rtc_homekit.yml
+
+# tailscale state
+runtime/
+
+# media never in git
+media/
+*.mp4
+*.jpg
+*.wav
+
+# firmware images and device dumps - contain wifi credentials
+firmware/
+camera-backups/
+*.bin
+*.tgz
+
+*.log
+.DS_Store

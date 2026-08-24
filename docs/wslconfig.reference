@@ -1,0 +1,9 @@
+[wsl2]
+# This WSL instance hosts the home NVR (Frigate + Tailscale). WSL2 shuts the
+# VM down after a period of inactivity by default (vmIdleTimeout, 60s), which
+# takes Docker and every container with it. Observed happening on 2026-08-22:
+# the docker daemon and both containers restarted together with RestartCount=0,
+# i.e. the VM had gone away underneath them.
+#
+# -1 disables the idle shutdown entirely.
+vmIdleTimeout=-1

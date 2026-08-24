@@ -1,0 +1,180 @@
+# Frigate 0.17.x - home NVR
+# Six Yi cameras on local-only custom firmware (cloud disabled).
+#
+# Design notes, all learned by debugging this stack - see docs/nvr-findings.md:
+#  1. Each camera exposes ONE rtsp stream (ch0_0, main). ch0_1 is 404 because
+#     upstream warns against enabling both streams on these weak SoCs. Since
+#     detect and record share a single input, Frigate opens exactly ONE
+#     connection per camera anyway - go2rtc is not needed and was removed.
+#  2. detect width/height are set explicitly. Without them Frigate probes the
+#     stream, and a probe timeout hits an upstream bug that crashes Frigate.
+#  3. record uses audio-aac, NOT audio-copy. The MStar cameras emit PCM mu-law,
+#     which MP4 cannot contain - audio-copy makes recording fail outright.
+
+mqtt:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Detector - RTX 4080 SUPER via ONNX/TensorRT
+# ---------------------------------------------------------------------------
+# Model built by scripts/build-yolo-model.sh (yolov9-t, 320x320).
+# Frigate does not ship an ONNX model; it has to be exported once.
+detectors:
+  onnx:
+    type: onnx
+
+model:
+  model_type: yolo-generic
+  width: 320
+  height: 320
+  input_tensor: nchw
+  input_dtype: float
+  path: /config/model_cache/yolo.onnx
+  labelmap_path: /labelmap/coco-80.txt
+
+# ---------------------------------------------------------------------------
+# Global defaults
+# ---------------------------------------------------------------------------
+ffmpeg:
+  hwaccel_args: preset-nvidia
+
+  # These cameras stall for seconds at a time under load. The stock
+  # preset-rtsp-generic uses a 10s input timeout, and retry_interval
+  # defaults to another 10s - so one brief stall cost 20s+ of recording.
+  # Measured gaps of 30-70s per camera before this change.
+  # 30s timeout rides through a stall instead of tearing the process down;
+  # 3s retry gets it back faster when a teardown does happen.
+  retry_interval: 3
+  input_args:
+    - -avoid_negative_ts
+    - make_zero
+    - -fflags
+    - +genpts+discardcorrupt
+    - -rtsp_transport
+    - tcp
+    - -timeout
+    - "30000000"
+    - -use_wallclock_as_timestamps
+    - "1"
+
+  output_args:
+    # The MStar build of rtsp_server_yi emits malformed Access Unit Delimiter
+    # (NAL type 9) and Filler Data (type 12) units. They decode fine live, but
+    # break the Annex-B -> AVCC conversion when muxed into MP4, producing
+    # "Invalid NAL unit size" and making recordings unplayable in the browser
+    # (CHUNK_DEMUXER_ERROR_APPEND_FAILED). Measured: 80 errors per 20s segment.
+    #
+    # Stripping those two NAL types fixes it with no re-encode, no quality loss
+    # and smaller files. Verified: 80 errors -> 0.
+    # This replaces preset-record-generic-audio-aac, matching it exactly plus
+    # the bitstream filter.
+    record:
+      - -f
+      - segment
+      - -segment_time
+      - "10"
+      - -segment_format
+      - mp4
+      - -reset_timestamps
+      - "1"
+      - -strftime
+      - "1"
+      - -c:v
+      - copy
+      - -bsf:v
+      - filter_units=remove_types=9|12
+      - -c:a
+      - aac
+
+detect:
+  enabled: true
+  fps: 5
+
+objects:
+  track:
+    - person
+
+record:
+  enabled: true
+  continuous:
+    days: 2
+  alerts:
+    retain:
+      days: 14
+      mode: motion
+  detections:
+    retain:
+      days: 7
+      mode: motion
+
+snapshots:
+  enabled: true
+  retain:
+    default: 14
+
+# ---------------------------------------------------------------------------
+# Cameras
+# ---------------------------------------------------------------------------
+cameras:
+  # MStar y203c cameras report 1920x1088
+  cam1_mensroom:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.5/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1088
+
+  cam2_living:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.22/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1088
+
+  cam4_hallway:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.4/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1088
+
+  cam5_laundry:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.149/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1088
+
+  # Allwinner y20ga cameras report 1920x1080
+  cam3_kitchen:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.3/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1080
+
+  cam6_extra:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.3.6/ch0_0.h264
+          roles: [detect, record]
+    detect:
+      width: 1920
+      height: 1080
+version: 0.17-0

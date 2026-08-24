@@ -1,0 +1,35 @@
+# Tailscale overlay - remote access without exposing anything to the internet.
+#
+#   docker compose -f compose.yaml -f compose.tailscale.yaml up -d
+#
+# Frigate is reached at  https://home-nvr.<your-tailnet>.ts.net  from any device
+# on your tailnet. No port forwarding. Nothing is published to the public
+# internet - Tailscale Funnel is deliberately NOT enabled.
+#
+# Uses userspace networking, so it needs no /dev/net/tun and no NET_ADMIN.
+# That matters here because this runs inside WSL2.
+
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: tailscale
+    hostname: home-nvr            # -> home-nvr.<tailnet>.ts.net
+    restart: unless-stopped
+    env_file:
+      - ./secrets/tailscale.env
+    environment:
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: "0.0.0.0:9002"   # health endpoint; TS_HEALTHCHECK_ADDR_PORT is removed in 1.82+
+    volumes:
+      - ./runtime/tailscale:/var/lib/tailscale
+      - ./services/tailscale:/config:ro
+    depends_on:
+      - frigate
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9002/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
