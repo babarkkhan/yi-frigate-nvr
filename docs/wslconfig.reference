@@ -1,9 +1,20 @@
 [wsl2]
 # This WSL instance hosts the home NVR (Frigate + Tailscale). WSL2 shuts the
-# VM down after a period of inactivity by default (vmIdleTimeout, 60s), which
-# takes Docker and every container with it. Observed happening on 2026-08-22:
-# the docker daemon and both containers restarted together with RestartCount=0,
-# i.e. the VM had gone away underneath them.
-#
-# -1 disables the idle shutdown entirely.
+# VM down after a period of inactivity by default, which takes Docker and every
+# container with it. -1 disables that. NOTE: this alone is not sufficient - a
+# keepalive process is also required, see scripts/install-boot-task.ps1.
 vmIdleTimeout=-1
+
+# Mirrored networking: WSL shares the Windows network interfaces instead of
+# sitting behind its own NAT with a 1420 MTU.
+#
+# Fixes two things at once:
+#  1. Published container ports become reachable on the LAN address, not just
+#     localhost. Previously http://192.168.3.148:5000 did not work at all.
+#  2. Removes the NAT/MTU boundary that was silently dropping any packet over
+#     ~1280 bytes, which broke Tailscale HTTPS while small requests succeeded.
+networkingMode=mirrored
+
+# Let the host reach containers and vice versa across the mirrored interfaces.
+[experimental]
+hostAddressLoopback=true

@@ -37,7 +37,19 @@ Write-Host "Installing '$name' to run at boot as $me" -ForegroundColor Cyan
 try { Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue } catch {}
 
 $action    = New-ScheduledTaskAction -Execute "wsl.exe" -Argument "-d Ubuntu -u root -e sleep infinity"
-$trigger   = New-ScheduledTaskTrigger -AtStartup
+
+# TWO triggers, deliberately. AtStartup alone is not enough: any `wsl --shutdown`
+# kills the keepalive with exit code 1, and with only a boot trigger nothing
+# re-runs it until Windows next reboots. Measured 2026-08-29 - the keepalive had
+# been dead 24h, so WSL terminated the distro on every idle period and took
+# Docker, Frigate and Tailscale down with it every 30-60 seconds.
+# MultipleInstances=IgnoreNew (below) means the repeat never double-starts a
+# healthy keepalive; it only fires once the task has actually stopped.
+$bootTrigger   = New-ScheduledTaskTrigger -AtStartup
+$repeatTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(1) `
+                   -RepetitionInterval (New-TimeSpan -Minutes 5) `
+                   -RepetitionDuration (New-TimeSpan -Days 3650)
+$trigger   = @($bootTrigger, $repeatTrigger)
 $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType S4U -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `

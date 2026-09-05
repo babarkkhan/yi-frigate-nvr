@@ -10,12 +10,34 @@ That is the browser's Media Source Extensions refusing the MP4.
 
 ## Root cause
 
-**The MStar build of `rtsp_server_yi` emits malformed Access Unit Delimiter
-(NAL type 9) and Filler Data (NAL type 12) units.**
+> **Corrected 2026-09-05.** This document previously claimed the cause was
+> *malformed AUD (NAL type 9) and Filler Data (type 12) units*. **That was
+> wrong** - neither type is present in the stream at all. The corruption is
+> real and MStar-specific, but the explanation below replaces the old one.
+> Upstream issue #593 has been corrected too.
 
-They decode fine as a live stream, but they break the Annex-B to AVCC
-conversion performed when muxing into MP4, producing zero-length NAL size
-prefixes:
+**The MStar build of `rtsp_server_yi` frames its output bitstream in a way that
+breaks Annex-B to AVCC conversion.** The specific defect is not isolated.
+
+What is established, by measurement:
+
+- A full NAL census of a 10s MStar capture contains **no type 9 and no type
+  12** units: 138 non-IDR, 4 IDR, 146 SEI, 4 SPS, 4 PPS.
+- **Any** bitstream re-serialisation repairs the file, including one that
+  removes nothing at all (see the ablation under "Fix" below).
+- The Allwinner build, tested identically, is clean: `nb_read_frames=400`,
+  zero errors.
+
+Ruled out by measurement: zero-length NAL units (the *clean* Allwinner build
+has more of them, 207 vs 141) and malformed SEI (all 146 parse correctly -
+`payload_size` agrees, `rbsp_trailing_bits` present).
+
+Caveat: every capture went through ffmpeg's RTSP depayloader, so some observed
+artefacts may be ffmpeg's rather than the camera's. A raw RTP capture is the
+next step.
+
+Whatever the framing defect is, it breaks the Annex-B to AVCC conversion
+performed when muxing into MP4, producing zero-length NAL size prefixes:
 
     Invalid NAL unit size (0 > 8246)
     missing picture in access unit with size 8312
@@ -55,14 +77,30 @@ On MStar cameras, neither daemon was fully correct:
 Switching to `rtsp_server_yi` fixed the stalling and silently introduced the
 recording corruption. Both were real; one just showed up later.
 
-## Fix: strip the offending NAL types while muxing
-
-Two options were tested, both giving 0 errors:
+## Fix: re-serialise the bitstream while muxing
 
 | Fix | Result | Cost |
 |---|---|---|
-| **`-bsf:v filter_units=remove_types=9\|12`** | 0 errors | none - no re-encode, and files are ~30% smaller |
+| **`-bsf:v filter_units=remove_types=9\|12`** | 0 errors | none - no re-encode |
 | NVENC re-encode | 0 errors | GPU encode, quality loss, larger files |
+
+**The applied fix works, but not for the reason originally documented.**
+Ablation on the same captured file, changing only the bitstream filter:
+
+| bitstream filter | NAL errors |
+|---|---|
+| none (baseline) | **780** |
+| `filter_units=remove_types=9\|12` (what is deployed) | 0 |
+| `filter_units=remove_types=99` - a type that **does not exist** | 0 |
+| `filter_units=remove_types=6` | 0 |
+| `h264_metadata` - pure re-serialise, removes nothing | 0 |
+
+A filter that removes nothing works just as well. The cure is `filter_units`
+re-parsing and re-writing the bitstream; the `remove_types` list is inert,
+since neither type is in the stream. `h264_metadata` expresses the same fix
+more honestly. The deployed config is left as-is because it works and is
+proven in production - but the earlier claim that it saves ~30% by dropping
+AUD and filler units was false, since there are none to drop.
 
 The bitstream filter is strictly better and is what was applied. `record` in
 `config.yml` is now an explicit arg list matching

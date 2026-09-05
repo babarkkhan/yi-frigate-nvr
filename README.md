@@ -31,24 +31,41 @@ Switching to `alternative` took 1,953 frame failures in 8 minutes down to **0**.
 
 ### 2. The MStar build of `rtsp_server_yi` corrupts MP4 recordings
 
-It emits malformed **Access Unit Delimiter (NAL type 9)** and **Filler Data
-(type 12)** units. They decode fine live, but break the Annex-B → AVCC
-conversion when muxed into MP4:
+The stream decodes cleanly live, but breaks the Annex-B → AVCC conversion when
+muxed into MP4 — **780 errors** in one 20-second segment:
 
 ```
-Invalid NAL unit size (0 > 8246)
+Invalid NAL unit size (0 > 11093)
 Error splitting the input into NAL units
 ```
 
-In the browser that surfaces as
-`CHUNK_DEMUXER_ERROR_APPEND_FAILED` and recordings simply will not play.
-The Allwinner build is unaffected.
+In the browser that surfaces as `CHUNK_DEMUXER_ERROR_APPEND_FAILED` and
+recordings simply will not play. The Allwinner build is unaffected
+(`nb_read_frames=400`, 0 errors).
 
-**Fix**, no re-encode and ~30% smaller files:
+**Fix** — any bitstream re-serialisation, no re-encode:
 
 ```
 -bsf:v filter_units=remove_types=9|12
 ```
+
+**Why it works is not what it looks like.** An earlier version of this README
+claimed the cause was malformed AUD (type 9) and Filler (type 12) NAL units.
+**That was wrong** — neither type is present in the stream at all. Ablation on
+the same file, changing only the filter:
+
+| bitstream filter | NAL errors |
+|---|---|
+| none | **780** |
+| `filter_units=remove_types=9\|12` | 0 |
+| `filter_units=remove_types=99` — a type that **does not exist** | 0 |
+| `h264_metadata` — removes nothing | 0 |
+
+A filter that removes nothing fixes it. The defect is in output **framing**;
+`remove_types` is inert. Zero-length NALs and malformed SEI were both ruled out
+by measurement, and the root cause is **not isolated** — see
+`docs/recording-corruption.md` and upstream
+[issue #593](https://github.com/roleoroleo/yi-hack-MStar/issues/593).
 
 ### 3. Two-way audio requires the daemon that stalls
 
@@ -78,12 +95,67 @@ AttributeError: module 'asyncio' has no attribute 'SubprocessError'
 raises. Workaround: set `detect.width` / `detect.height` explicitly so Frigate
 never probes. Startup went from ~3 minutes to 10 seconds.
 
-### 5. WSL2 will stop underneath you
+### 5. WSL2 will stop underneath you, and the keepalive needs two triggers
 
 `vmIdleTimeout=-1` in `.wslconfig` is **not sufficient** — measured, the distro
 still stopped after ~100s idle, taking Docker and every container with it. A
-long-running process inside the distro is required. See
-`scripts/install-boot-task.ps1`.
+long-running process inside the distro is required.
+
+But a keepalive registered with **only an AtStartup trigger is a trap.** Any
+`wsl --shutdown` kills it with exit code 1, and nothing re-runs it until
+Windows next reboots. Measured: the keepalive sat dead for over 24 hours while
+WSL tore the distro down every 30–60 seconds, restarting Docker, Frigate and
+Tailscale each time. Remote clients saw `ERR_CONNECTION_ABORTED`.
+
+`scripts/install-boot-task.ps1` therefore registers **boot + a 5-minute repeat**
+with `MultipleInstances=IgnoreNew`, so the repeat never double-starts a healthy
+keepalive and revives a dead one within 5 minutes.
+`scripts/harden-keepalive.ps1` applies the same fix to an existing task.
+
+The healthy steady-state `LastTaskResult` is **`2147946720`** (`0x800710E0`,
+"the operator or administrator has refused the request") — that is the repeat
+trigger being correctly declined. The failure signature is **`State: Ready`
+with result `1`**.
+
+### 6. Tailscale Serve is ~12x slower than the node's own port
+
+Everything is reachable over the tailnet, but the ~2 MB Frigate UI bundle takes
+**169s through Serve versus 14.5s hitting the port directly**, and a 30-second
+clip times out entirely. The page connects, renders blank, and the browser
+gives up.
+
+Serve is terminated by **netstack**, Tailscale's userspace TCP stack, and never
+touches the kernel TUN — `tailscale0` showed only 774 KB TX after several MB
+had gone through Serve.
+
+Use the port instead, still inside WireGuard and still encrypted end to end:
+
+```
+http://home-nvr:5000
+```
+
+Ruled out by measurement: DERP relay (direct, 1 ms), MTU black hole, packet
+loss, CPU, and UDP GRO offload. See `docs/tailnet-throughput.md` — including
+the caveat that these figures were taken between two endpoints on the same
+physical machine.
+
+### 7. An NVIDIA driver update breaks the GPU inside a running WSL distro
+
+`/usr/lib/wsl/lib` is bind-mounted from Windows at distro boot and never
+re-mounts. After a driver update the distro keeps the **old** userspace driver
+while Windows moves on, and containers fail in the NVIDIA prestart hook:
+
+```
+nvidia-container-cli: WSL environment detected but no adapters were found
+```
+
+`/dev/dxg` is still present and the GPU is fine — the mount is stale. Fix:
+`wsl --shutdown`, then restart. Nothing recovers from this automatically:
+`restart: unless-stopped` cannot help a container that fails before its process
+exists, and the keepalive above actively preserves the stale mount.
+
+A related failure: ffmpeg losing its CUDA context (`cu->cuInit(0) failed`)
+while `nvidia-smi` stays perfectly healthy. A container restart clears it.
 
 ---
 
@@ -116,9 +188,11 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
    Frigate 0.17.2  ── detect + record on a single stream per camera
         │              ONNX/TensorRT on an RTX 4080, ~6-8 ms inference
         │              2-day continuous, 14d alerts, 7d detections
-        ├──► web UI on :5000
+        ├──► web UI on :5000                    LAN, full speed
+        ├──► http://<host>:5000 over the tailnet  PREFERRED remote path
         └──► Tailscale Serve ──► https://<host>.<tailnet>.ts.net
                                  tailnet only, Funnel deliberately off
+                                 works, but ~12x slower - see finding 6
 ```
 
 Host is Windows + WSL2 (Ubuntu) + Docker. It ports to a plain Linux box with
@@ -142,11 +216,38 @@ scripts/
   configure-cam.ps1           post-flash camera config, dry-run by default
   setup-wsl-docker.sh         Docker + NVIDIA Container Toolkit inside WSL
   build-yolo-model.sh         export the YOLOv9 ONNX model Frigate needs
-  install-boot-task.ps1       keep WSL alive across reboots
+  install-boot-task.ps1       keep WSL alive (boot + 5-minute repeat trigger)
+  harden-keepalive.ps1        add the repeat trigger to an existing task
   camera-speak.ps1            push audio to a camera speaker
   make-speech.ps1             synthesise speech on the NVR
+
+  # health checks - all read-only, safe to run any time
+  nvr-status.sh               per-camera fps, detector ms, GPU; ALL OK or names
+                              the stalled cameras
+  probe-rtsp.sh               what each camera's RTSP actually declares -
+                              catches the width=0 wedge
+  verify-recordings.sh        fully decodes the newest segment per camera
+  last-recording.sh           newest segment per camera, and how long ago
+  retention-report.sh         recorded footage per day
+  tailnet-broadcast-check.sh  every endpoint over the tailnet, with timings
+
+  # tooling for upstream issue #593
+  repro-593.sh                reproduce the MP4 corruption
+  bsf-ablation.sh             which bitstream filter actually fixes it
+  nal-analysis.py             NAL census of an Annex-B capture
+  nal-trailing.py             zero-length NALs and trailing-zero padding
+  nal-empty-context.py        byte context around empty NAL units
+  sei-parse.py                SEI internal length fields
 docs/                         the findings, in detail
 ```
+
+**A warning about the health checks.** `nvr-status.sh` and friends are run via
+`wsl -d Ubuntu -- ...`, and **each such command starts the distro**. If the
+distro is down, the probe silently repairs the very fault it is measuring. An
+8-minute soak once reported 7/8 "ALL OK" for exactly this reason, while a phone
+found the system unreachable on the first try. To measure availability
+honestly, use `curl` from the Windows host or a real client and touch WSL zero
+times — that is what `tailnet-broadcast-check.sh` does.
 
 ---
 

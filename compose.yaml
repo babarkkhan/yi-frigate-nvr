@@ -42,3 +42,14 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+# WSL2's eth0 has an MTU of 1420, but Docker bridges default to 1500. Packets
+# sized for 1500 are silently dropped crossing that boundary, so small requests
+# succeed and anything larger hangs - which looked exactly like a TLS failure
+# until a plain-HTTP request for a 6.8 KB page timed out the same way.
+# 1280 is Tailscale's own default and leaves room for WireGuard overhead.
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1280"
