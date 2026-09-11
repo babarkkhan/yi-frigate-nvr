@@ -48,5 +48,29 @@ services:
       - NET_ADMIN
       - NET_RAW
     network_mode: service:frigate
+
+    # MEASURED 2026-09-06 and again 2026-09-12: after an unattended restart,
+    # tailscaled came up with no UDP path at all and never recovered -
+    # `netcheck` reporting `UDP: false` and `IPv4: (no addr found)`, the node
+    # showing itself `offline`, and ~240 no-derp-connection events in 2 hours.
+    # A manual `docker restart tailscale` fixed it both times, which is the
+    # signature of a startup race rather than a network fault. Frigate owns the
+    # network namespace here, so `condition: service_healthy` holds tailscaled
+    # back until that namespace is actually ready. Plain `depends_on: [frigate]`
+    # waits only for the container to START, which was not enough.
     depends_on:
-      - frigate
+      frigate:
+        condition: service_healthy
+
+    # Makes the above failure VISIBLE instead of silent. Both times, `docker ps`
+    # cheerfully reported "Up N hours" while the tailnet was unreachable. This
+    # surfaces it as "(unhealthy)". Docker will not restart on unhealthy by
+    # itself - that still needs something watching - but at least the state is
+    # no longer invisible. /healthz is served on 9002 by TS_ENABLE_HEALTH_CHECK
+    # above and returns 503 when tailscaled considers itself unhealthy.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9002/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

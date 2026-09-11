@@ -78,3 +78,90 @@ off-LAN. Until then, treat the absolute throughput figures as unconfirmed.
 ## On the LAN, none of this applies
 
 `http://192.168.3.148:5000` runs at 2-4 MB/s and loads the UI in ~0.03s.
+
+---
+
+## Recurrence: tailscaled comes up with no UDP path after an unattended restart
+
+Happened twice, six days apart - 2026-09-06 and 2026-09-12. Both times the
+symptom was that the LAN worked perfectly and the tailnet was completely
+unreachable:
+
+```
+LAN     http://192.168.3.148:5000    HTTP 200 in 0.03s
+tailnet http://home-nvr:5000         TIMEOUT
+tailnet https (Serve)                TIMEOUT
+```
+
+`netcheck` from inside the container:
+
+```
+* UDP: false
+* IPv4: (no addr found)
+* Nearest DERP: unknown (no response to latency probes)
+```
+
+The node reported *itself* offline, with `Tailscale cannot connect because the
+network is down`, and flapped continuously - **240 `no-derp-connection` events
+in two hours**, one roughly every 30 seconds.
+
+Crucially `docker ps` said `Up 10 hours` throughout, and Frigate was entirely
+unaffected: 6/6 cameras at 5 fps, because cameras are addressed by IP and need
+no DNS or WAN path.
+
+### Why it is a race, not a network fault
+
+A plain `docker restart tailscale` fixed it both times, immediately and
+completely - `UDP: true`, public endpoint acquired. Nothing about the host
+network changed in between. What differs is *ordering*: on an unattended
+restart the whole stack comes up at once, and on a manual restart Frigate's
+network namespace already exists.
+
+`tailscale` runs with `network_mode: service:frigate`, so Frigate owns the
+namespace. The old config used:
+
+```yaml
+depends_on:
+  - frigate
+```
+
+which waits only for the container to **start**, not to be usable.
+
+### Fix
+
+```yaml
+depends_on:
+  frigate:
+    condition: service_healthy
+```
+
+Compose now blocks correctly on startup - `frigate Waiting` → `frigate
+Healthy` → `tailscale Starting`.
+
+A healthcheck was added alongside it, because the worst part of both incidents
+was invisibility:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9002/healthz >/dev/null 2>&1 || exit 1"]
+  interval: 60s
+  start_period: 60s
+```
+
+`/healthz` on port 9002 comes from `TS_ENABLE_HEALTH_CHECK` and returns 503
+when tailscaled considers itself unhealthy. `docker ps` now shows
+`(unhealthy)` instead of a contented `Up 10 hours`.
+
+**This makes the failure visible and less likely; it does not make it
+self-healing.** Docker does not restart a container for being unhealthy. If it
+recurs despite the ordering fix, something has to act on that unhealthy state.
+
+### Verified after the fix
+
+```
+LAN     :5000                        HTTP 200  0.06s
+tailnet http://home-nvr:5000         HTTP 200  0.57s
+tailnet https Serve                  HTTP 200  0.60s
+all six live frames over the tailnet HTTP 200  0.7-2.4s each
+tailscale container                  Up (healthy)
+```
