@@ -187,6 +187,9 @@ recreation and readiness checks; its default `--check` mode changes nothing.
 The local status check now fails on missing cameras or stale recordings.
 See [the disconnect, recovery and storage review](docs/recovery-and-disconnect-review.md)
 for measured gaps, storage results and the unresolved reliability limits.
+The [unattended recovery and alerts design](docs/unattended-recovery-and-alerts.md)
+adds a tested Windows-only read-only probe and a deployment plan. Automatic
+recovery and external notifications are not yet enabled.
 
 **Data-saver live viewing (2026-09-12):** all six cameras default to a GPU-scaled
 960-pixel-wide stream, targeting 10 fps, with **Full resolution** available in
