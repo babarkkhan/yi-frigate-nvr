@@ -181,6 +181,12 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
+**Live audio pilot (2026-09-12):** cam5 now has a go2rtc live stream with AAC
+and Opus audio, with audible listening confirmed by the owner. Recording inputs
+remain direct to the cameras. An intermittent Opus reconnect failure, latency,
+and off-LAN acceptance remain open. Ready for staged MStar testing, with
+Allwinner handled separately; see [the developer handoff](docs/live-audio-pilot.md).
+
 ```
 6 Yi cameras (yi-hack, cloud disabled, ports 80+554 only)
         │  RTSP, one connection each

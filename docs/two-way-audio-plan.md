@@ -1,7 +1,15 @@
 # Two-way audio (mic / talk) - investigated, BLOCKED by a firmware trade-off
 
-**Outcome: not achievable without giving up stability.** All four phases were
-attempted. The blocker is real and is documented below with the evidence.
+> **Follow-up 2026-09-12:** the measured missing RTSP backchannel remains a
+> blocker for the standard talk path. The broader conclusion about speaker
+> uploads is being revisited: the 0.5.7 playback page specifies 16 kHz (the old
+> test used 8 kHz), the upload parser can misread raw PCM, and the audio library
+> has a separate speaker FIFO reader. The owner confirmed live listening on cam5;
+> audible speaker output remains unverified. See [live-audio-pilot.md](live-audio-pilot.md).
+
+**Historical outcome:** the standard RTSP talk path required giving up daemon
+stability. The evidence below remains relevant to that path; it does not rule
+out the separate speaker-upload path described in the follow-up above.
 
 ## The finding
 
