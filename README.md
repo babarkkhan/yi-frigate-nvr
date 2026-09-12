@@ -181,28 +181,55 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
-**Live audio (2026-09-12):** all four **MStar** cameras now have a go2rtc live
-stream carrying AAC and Opus audio. Recording inputs remain direct to the
-cameras and were never modified. **Allwinner cam3** now has a separate listening
-pilot: selecting explicit `pcm` on the camera and rebooting enabled its audio
-track, with room sound confirmed by the owner. Cam6 remains unchanged.
-See [the Allwinner pilot](docs/live-audio-pilot-allwinner.md)
-for measurements and acceptance status before extending this to cam6.
+**Live audio (2026-09-12): all six cameras.** Each has a go2rtc live stream
+carrying AAC and Opus audio. Recording inputs remain direct to the cameras and
+were never modified.
 
-Every camera's audio was measured rather than assumed: all four MStar units are
-`pcm_s16be` 8000 Hz mono with the audio clock running at **half real time**, so
-each needs `-af asetpts=N/SR/TB`. Watch the ratio you measure — `decoded /
-requested` shows the fault at 2.00 while `wall / decoded` reads a healthy 1.01
-and hides it completely.
+The **Allwinner** units needed a camera-side change the MStar ones did not:
+`RTSP_AUDIO` must be set to an explicit codec (`pcm`), **not** `yes`. Allwinner
+0.4.0 only requests the microphone FIFO for `pcm`, `alaw` or `ulaw`, so `yes`
+silently yields a video-only stream. The camera must then be **rebooted** — the
+capture path is initialised at startup, and a config write alone does nothing.
 
-Still open for MStar: **audible sound is human-confirmed on cam5 only**; an intermittent
-audio failure on rapid reconnects (roughly 3 in 20 stream-tests during
-back-to-back sweeps, 0 in 5 isolated runs, rotating between cameras); latency;
-and off-LAN acceptance. Recording and detection were unaffected throughout —
-all six cameras held 5.0–5.1 fps.
+Every camera's audio was measured, never assumed. All six are `pcm_s16be`
+8000 Hz mono with the audio clock at **half real time**, so each needs
+`-af asetpts=N/SR/TB`:
 
-See [the developer handoff](docs/live-audio-pilot.md) and
-[the MStar rollout](docs/live-audio-rollout-mstar.md).
+| camera | platform | ratio | RMS dBFS |
+|---|---|---|---|
+| cam1_mensroom | MStar | 2.00 | -47.61 |
+| cam2_living | MStar | 1.99 | -35.13 |
+| cam3_kitchen | Allwinner | 2.00 | -57.82 |
+| cam4_hallway | MStar | 2.00 | -51.30 |
+| cam5_laundry | MStar | 2.00 | -46.07 |
+| cam6_extra | Allwinner | 1.95 | -37.70 |
+
+**Watch which ratio you measure.** `decoded / requested` exposes the fault at
+2.00; `wall / decoded` reads a healthy 1.01 and hides it completely, because
+`-t` limits by the stream's own timestamps.
+
+Enabling PCM also gives the Allwinner **recordings** an audio track, since the
+existing record arguments already transcode to AAC. All six now record
+`aac,audio,8000`. Recording audio/video sync is not established.
+
+**Still open.** Audible sound is human-confirmed on **cam3 and cam5 only** —
+the rest show signal, which is not intelligibility. An intermittent
+audio failure on rapid open/reconnect remains unresolved and **scales with
+stream count**: each stream passes reliably alone (5/5), while back-to-back
+sweeps failed 2 of 6. It rotates between cameras, so it is contention, not a
+per-camera defect. Latency, off-LAN acceptance and long-term reconnect
+reliability are all unverified. Recording and detection were unaffected
+throughout — all six held 5.0–5.1 fps with the detector at 7.7 ms.
+
+Two verifier bugs were found and fixed in the process, both of the
+report-success-without-checking kind: `verify-all-live-audio.sh` printed
+"ALL STREAMS PASS" on an empty stream list, and `repeat-live-audio.sh`
+hardcoded the MStar frame geometry and would false-fail Allwinner cameras.
+
+See [the MStar handoff](docs/live-audio-pilot.md),
+[the Allwinner pilot](docs/live-audio-pilot-allwinner.md),
+[the MStar rollout](docs/live-audio-rollout-mstar.md) and
+[the cam6 rollout](docs/live-audio-rollout-cam6.md).
 
 ```
 6 Yi cameras (yi-hack, cloud disabled, ports 80+554 only)

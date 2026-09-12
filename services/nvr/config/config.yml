@@ -48,8 +48,25 @@ mqtt:
 #
 # Allwinner cam3 pilot: changing camera RTSP_AUDIO=yes to pcm and rebooting
 # enabled L16/8000 microphone audio. Measured decoded/requested=2.00, so its
-# live stream also needs sample-count timestamps. Cam6 remains unchanged.
+# live stream also needs sample-count timestamps.
 # See docs/live-audio-pilot-allwinner.md for evidence and rollout gates.
+#
+# 2026-09-12, cam6_extra: same change applied, completing all six cameras.
+# Gates followed from the Allwinner handoff - full settings saved first, exactly
+# one field changed (RTSP_AUDIO yes -> pcm, verified by diffing the complete
+# before/after settings), camera rebooted, then its source MEASURED on its own
+# rather than assumed:
+#
+#   cam6_extra  pcm_s16be 8000 Hz mono  req=10s decoded=19.459s  ratio=1.95
+#               clock at 0.51x real time   RMS -37.7 dBFS
+#
+# So cam6 needs the same sample-count correction. Its signal is markedly
+# stronger than cam3's (-37.7 vs -57.82 dBFS).
+#
+# NOTE cam6 has RTSP_STREAM=both where every other camera has high. Design note
+# 1 above warns against enabling both streams on these weak SoCs. That is a
+# pre-existing divergence, not introduced here, and was deliberately left alone
+# - changing it is a separate change with its own baseline and rollback.
 go2rtc:
   streams:
     cam1_mensroom:
@@ -62,6 +79,8 @@ go2rtc:
       - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
     cam5_laundry:
       - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+    cam6_extra:
+      - "ffmpeg:rtsp://192.168.3.6/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
 
 # ---------------------------------------------------------------------------
 # Detector - RTX 4080 SUPER via ONNX/TensorRT
