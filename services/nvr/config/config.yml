@@ -21,8 +21,42 @@ mqtt:
 # The measured cam5 audio RTP clock advances at roughly half real time.
 # Build live-audio timestamps from sample count; leave recording args unchanged.
 # See docs/live-audio-pilot.md for validation, limitations, and rollback.
+#
+# ROLLOUT NOTE 2026-09-12. cam2_living added as the second pilot camera, per
+# step 2 of the handoff: one MStar camera at a time, validating each camera's
+# own audio rather than assuming cam5's correction applies.
+#
+# Measured on all four MStar cameras before adding this - every one identical,
+# pcm_s16be 8000 Hz mono with the audio clock at half real time:
+#
+#   camera          codec      rate  req  decoded  ratio  rms dBFS
+#   cam1_mensroom   pcm_s16be  8000  10s  19.993s  2.00   -47.61
+#   cam2_living     pcm_s16be  8000  10s  19.878s  1.99   -35.13
+#   cam4_hallway    pcm_s16be  8000  10s  19.977s  2.00   -51.30
+#   cam5_laundry    pcm_s16be  8000  10s  19.974s  2.00   -46.07
+#
+# Read that ratio as decoded/requested, NOT wall/decoded: `-t` limits by the
+# stream's own timestamps, so wall/decoded looks like a healthy 1.0 and hides
+# the fault completely. See scripts/probe-camera-audio.py.
+#
+# 2026-09-12, later: cam1 and cam4 added at the owner's direction, completing
+# all four MStar cameras. Both were measured affected in the table above. Note
+# both are wedge-prone - cam1 has wedged three times and cam4 twice in the last
+# fortnight - and a wedged camera takes its live-audio stream down with it.
+# That is a pre-existing camera fault, not caused by this stanza; the stream
+# recovers when the camera is rebooted.
+#
+# cam3_kitchen and cam6_extra are Allwinner and have NO audio track at all.
+# Adding a stanza for them cannot create a source track - see the Allwinner
+# section of docs/live-audio-pilot.md.
 go2rtc:
   streams:
+    cam1_mensroom:
+      - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+    cam2_living:
+      - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+    cam4_hallway:
+      - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
     cam5_laundry:
       - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
 

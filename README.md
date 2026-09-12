@@ -181,11 +181,25 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
-**Live audio pilot (2026-09-12):** cam5 now has a go2rtc live stream with AAC
-and Opus audio, with audible listening confirmed by the owner. Recording inputs
-remain direct to the cameras. An intermittent Opus reconnect failure, latency,
-and off-LAN acceptance remain open. Ready for staged MStar testing, with
-Allwinner handled separately; see [the developer handoff](docs/live-audio-pilot.md).
+**Live audio (2026-09-12):** all four **MStar** cameras now have a go2rtc live
+stream carrying AAC and Opus audio. Recording inputs remain direct to the
+cameras and were never modified. The two **Allwinner** cameras have no audio
+track at source, so no stanza can give them one.
+
+Every camera's audio was measured rather than assumed: all four MStar units are
+`pcm_s16be` 8000 Hz mono with the audio clock running at **half real time**, so
+each needs `-af asetpts=N/SR/TB`. Watch the ratio you measure — `decoded /
+requested` shows the fault at 2.00 while `wall / decoded` reads a healthy 1.01
+and hides it completely.
+
+Still open: **audible sound is human-confirmed on cam5 only**; an intermittent
+audio failure on rapid reconnects (roughly 3 in 20 stream-tests during
+back-to-back sweeps, 0 in 5 isolated runs, rotating between cameras); latency;
+and off-LAN acceptance. Recording and detection were unaffected throughout —
+all six cameras held 5.0–5.1 fps.
+
+See [the developer handoff](docs/live-audio-pilot.md) and
+[the MStar rollout](docs/live-audio-rollout-mstar.md).
 
 ```
 6 Yi cameras (yi-hack, cloud disabled, ports 80+554 only)
