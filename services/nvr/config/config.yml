@@ -5,7 +5,8 @@
 #  1. Each camera exposes ONE rtsp stream (ch0_0, main). ch0_1 is 404 because
 #     upstream warns against enabling both streams on these weak SoCs. Since
 #     detect and record share a single input, Frigate opens exactly ONE
-#     connection per camera anyway - go2rtc is not needed and was removed.
+#     connection per camera for recording/detection. The cam5 listening pilot
+#     adds one on-demand go2rtc connection while live audio is being viewed.
 #  2. detect width/height are set explicitly. Without them Frigate probes the
 #     stream, and a probe timeout hits an upstream bug that crashes Frigate.
 #  3. record uses audio-aac, NOT audio-copy. The MStar cameras emit PCM mu-law,
@@ -13,6 +14,17 @@
 
 mqtt:
   enabled: false
+
+# Live-listening pilot only. Keep the proven recording inputs unchanged until
+# browser audio and stability are verified. One FFmpeg input supplies copied
+# video plus AAC and Opus audio, using one additional camera connection.
+# The measured cam5 audio RTP clock advances at roughly half real time.
+# Build live-audio timestamps from sample count; leave recording args unchanged.
+# See docs/live-audio-pilot.md for validation, limitations, and rollback.
+go2rtc:
+  streams:
+    cam5_laundry:
+      - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
 
 # ---------------------------------------------------------------------------
 # Detector - RTX 4080 SUPER via ONNX/TensorRT
@@ -58,14 +70,10 @@ ffmpeg:
     - "1"
 
   output_args:
-    # The MStar build of rtsp_server_yi emits malformed Access Unit Delimiter
-    # (NAL type 9) and Filler Data (type 12) units. They decode fine live, but
-    # break the Annex-B -> AVCC conversion when muxed into MP4, producing
-    # "Invalid NAL unit size" and making recordings unplayable in the browser
-    # (CHUNK_DEMUXER_ERROR_APPEND_FAILED). Measured: 80 errors per 20s segment.
-    #
-    # Stripping those two NAL types fixes it with no re-encode, no quality loss
-    # and smaller files. Verified: 80 errors -> 0.
+    # Preserve the measured MStar MP4 framing workaround. AUD/filler removal
+    # was a disproven explanation: filters removing nothing also fix it.
+    # Re-serialization works; the underlying cause remains unisolated.
+    # See docs/recording-corruption.md. No video re-encode is performed.
     # This replaces preset-record-generic-audio-aac, matching it exactly plus
     # the bitstream filter.
     record:
