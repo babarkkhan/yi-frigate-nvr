@@ -46,15 +46,18 @@ mqtt:
 # That is a pre-existing camera fault, not caused by this stanza; the stream
 # recovers when the camera is rebooted.
 #
-# cam3_kitchen and cam6_extra are Allwinner and have NO audio track at all.
-# Adding a stanza for them cannot create a source track - see the Allwinner
-# section of docs/live-audio-pilot.md.
+# Allwinner cam3 pilot: changing camera RTSP_AUDIO=yes to pcm and rebooting
+# enabled L16/8000 microphone audio. Measured decoded/requested=2.00, so its
+# live stream also needs sample-count timestamps. Cam6 remains unchanged.
+# See docs/live-audio-pilot-allwinner.md for evidence and rollout gates.
 go2rtc:
   streams:
     cam1_mensroom:
       - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
     cam2_living:
       - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+    cam3_kitchen:
+      - "ffmpeg:rtsp://192.168.3.3/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
     cam4_hallway:
       - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
     cam5_laundry:

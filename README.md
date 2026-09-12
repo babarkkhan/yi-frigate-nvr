@@ -183,8 +183,11 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 **Live audio (2026-09-12):** all four **MStar** cameras now have a go2rtc live
 stream carrying AAC and Opus audio. Recording inputs remain direct to the
-cameras and were never modified. The two **Allwinner** cameras have no audio
-track at source, so no stanza can give them one.
+cameras and were never modified. **Allwinner cam3** now has a separate listening
+pilot: selecting explicit `pcm` on the camera and rebooting enabled its audio
+track, with room sound confirmed by the owner. Cam6 remains unchanged.
+See [the Allwinner pilot](docs/live-audio-pilot-allwinner.md)
+for measurements and acceptance status before extending this to cam6.
 
 Every camera's audio was measured rather than assumed: all four MStar units are
 `pcm_s16be` 8000 Hz mono with the audio clock running at **half real time**, so
@@ -192,7 +195,7 @@ each needs `-af asetpts=N/SR/TB`. Watch the ratio you measure — `decoded /
 requested` shows the fault at 2.00 while `wall / decoded` reads a healthy 1.01
 and hides it completely.
 
-Still open: **audible sound is human-confirmed on cam5 only**; an intermittent
+Still open for MStar: **audible sound is human-confirmed on cam5 only**; an intermittent
 audio failure on rapid reconnects (roughly 3 in 20 stream-tests during
 back-to-back sweeps, 0 in 5 isolated runs, rotating between cameras); latency;
 and off-LAN acceptance. Recording and detection were unaffected throughout —
