@@ -118,6 +118,10 @@ running with this configuration; do not expand it automatically.
 
 ## Allwinner investigation, separate from this pilot
 
+Follow-up: the [cam3 Allwinner pilot](live-audio-pilot-allwinner.md) enabled
+microphone audio using explicit `pcm` and a camera reboot. The observations
+below describe the preceding state; cam6 is still unchanged.
+
 Read-only checks confirmed both cam3 and cam6 have `RTSP_AUDIO=yes` and use
 the alternative daemon. Allwinner 0.4.0 `system.sh` requests the PCM capture
 FIFO only for explicit `pcm`, `alaw`, or `ulaw`, unlike MStar. This is a concrete
