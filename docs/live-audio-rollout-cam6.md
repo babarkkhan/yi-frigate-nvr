@@ -117,10 +117,12 @@ reliably in isolation:
 | 5 | 2 of 5 failed |
 | 6 | 2 of 6 failed |
 
-It rotates between cameras and is a **contention effect**, not a property of
-any one camera. Each verification opens three connections (fragmented MP4, AAC
-RTSP, Opus RTSP), each prompting go2rtc to open another camera connection, so a
-sweep is far harsher than one person watching one camera. The underlying
+It rotates between cameras, but **resource contention is not an established
+cause**. These sequential sweeps did not control concurrent producer count or
+capture every failure's diagnostic output. Each verification opens three
+consumer connections (fragmented MP4, AAC RTSP, Opus RTSP); go2rtc may reuse a
+producer or restart it after teardown. Configured streams are not necessarily
+active camera connections. The underlying
 intermittent startup/reconnect fault remains **unresolved**; this rollout
 extends its blast radius to all six cameras without introducing it.
 

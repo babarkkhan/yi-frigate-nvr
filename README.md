@@ -214,12 +214,19 @@ existing record arguments already transcode to AAC. All six now record
 
 **Still open.** Audible sound is human-confirmed on **cam3 and cam5 only** —
 the rest show signal, which is not intelligibility. An intermittent
-audio failure on rapid open/reconnect remains unresolved and **scales with
-stream count**: each stream passes reliably alone (5/5), while back-to-back
-sweeps failed 2 of 6. It rotates between cameras, so it is contention, not a
-per-camera defect. Latency, off-LAN acceptance and long-term reconnect
+audio failure on rapid open/reconnect remains unresolved: isolated runs passed
+5/5 while one sequential sweep failed 2 of 6. Failures occur on different
+cameras; resource contention has not been isolated as the cause.
+Latency, off-LAN acceptance and long-term reconnect
 reliability are all unverified. Recording and detection were unaffected
 throughout — all six held 5.0–5.1 fps with the detector at 7.7 ms.
+
+**Latency correction:** all six streams now reset copied video timestamps
+alongside the existing audio correction. Added NVR video delay measures about
+0.10 s median across the fleet (cam3 previously measured 3.23 s). The owner
+reports phone playback about two seconds behind or slightly less. Transient
+stalls and physical A/V synchronization remain open; see
+[the implementation notes](docs/live-latency-fix.md).
 
 Two verifier bugs were found and fixed in the process, both of the
 report-success-without-checking kind: `verify-all-live-audio.sh` printed

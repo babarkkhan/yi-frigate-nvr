@@ -20,6 +20,8 @@ mqtt:
 # video plus AAC and Opus audio, using one additional camera connection.
 # The measured cam5 audio RTP clock advances at roughly half real time.
 # Build live-audio timestamps from sample count; leave recording args unchanged.
+# Reset copied video PTS/DTS too: otherwise its probe-time offset relative to
+# zero-based audio adds seconds of live latency. See docs/live-latency-fix.md.
 # See docs/live-audio-pilot.md for validation, limitations, and rollback.
 #
 # ROLLOUT NOTE 2026-09-12. cam2_living added as the second pilot camera, per
@@ -70,17 +72,17 @@ mqtt:
 go2rtc:
   streams:
     cam1_mensroom:
-      - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam2_living:
-      - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam3_kitchen:
-      - "ffmpeg:rtsp://192.168.3.3/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.3/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam4_hallway:
-      - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam5_laundry:
-      - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam6_extra:
-      - "ffmpeg:rtsp://192.168.3.6/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata -af asetpts=N/SR/TB"
+      - "ffmpeg:rtsp://192.168.3.6/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
 
 # ---------------------------------------------------------------------------
 # Detector - RTX 4080 SUPER via ONNX/TensorRT

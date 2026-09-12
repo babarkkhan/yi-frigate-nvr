@@ -23,30 +23,60 @@ label = sys.argv[2] if len(sys.argv) > 2 else ip
 DURATION = 10
 url = f'rtsp://{ip}/ch0_0.h264'
 
-probe = subprocess.run(
+def fail(reason):
+    print(json.dumps({'camera': label, 'ok': False, 'error': reason,
+                      'needs_asetpts': None, 'clock_runs_at': None}))
+    raise SystemExit(1)
+
+
+def run_checked(*args, **kwargs):
+    try:
+        result = subprocess.run(*args, **kwargs)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(str(error))
+    if result.returncode:
+        tail = result.stderr if isinstance(result.stderr, str) else result.stderr.decode(errors='replace')
+        fail(f'command exited {result.returncode}: {tail[-500:]}')
+    return result
+
+
+probe = run_checked(
     [FP, '-v', 'error', '-rtsp_transport', 'tcp', '-timeout', '12000000',
      '-show_entries', 'stream=codec_name,codec_type,sample_rate,channels,width,height',
      '-of', 'json', url], capture_output=True, text=True, timeout=45)
-streams = json.loads(probe.stdout or '{}').get('streams', [])
+try:
+    streams = json.loads(probe.stdout or '{}').get('streams', [])
+except (ValueError, AttributeError):
+    fail('invalid ffprobe response')
+audio = next((s for s in streams if s.get('codec_type') == 'audio'), {})
+if not audio:
+    fail('source has no audio track')
 
 start = time.monotonic()
-pull = subprocess.run(
+pull = run_checked(
     [FF, '-hide_banner', '-loglevel', 'error', '-rtsp_transport', 'tcp',
-     '-timeout', '12000000', '-i', url, '-t', str(DURATION),
+     '-timeout', '12000000', '-allowed_media_types', 'audio', '-i', url, '-t', str(DURATION),
      '-map', '0:a:0', '-vn', '-ac', '1', '-ar', '16000', '-f', 'f32le', 'pipe:1'],
     capture_output=True, timeout=DURATION + 40)
 elapsed = time.monotonic() - start
 
-samples = array.array('f', pull.stdout)
+if pull.stderr.strip():
+    fail(pull.stderr.decode(errors='replace').strip()[-500:])
+try:
+    samples = array.array('f', pull.stdout)
+except ValueError:
+    fail('partial audio sample in output')
 secs = len(samples) / 16000
+if secs < DURATION * 0.9 or any(not math.isfinite(s) for s in samples):
+    fail('insufficient or invalid audio samples; clock measurement unavailable')
 rms = math.sqrt(sum(s * s for s in samples) / len(samples)) if samples else 0
 
 # decoded / requested is the discriminating ratio - see the docstring.
 overrun = (secs / DURATION) if DURATION else None
-audio = next((s for s in streams if s.get('codec_type') == 'audio'), {})
 
 print(json.dumps({
     'camera': label, 'ip': ip,
+    'ok': True,
     'audio_codec': audio.get('codec_name'),
     'sample_rate': audio.get('sample_rate'),
     'channels': audio.get('channels'),

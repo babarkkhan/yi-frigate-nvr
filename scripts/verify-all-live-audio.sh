@@ -13,7 +13,7 @@
 # pass the number of streams you EXPECT as $1 to assert the count as well.
 set -uo pipefail
 
-S=/mnt/d/Claude-BK/Frigate-Cams/scripts/verify-live-audio-any.py
+S="$(dirname "$(readlink -f "$0")")/verify-live-audio-any.py"
 expect=${1:-}
 rc=0
 
@@ -48,7 +48,8 @@ d=c['detect']; print(d['width'], d['height'])" 2>/dev/null)
     rc=1; continue
   fi
 
-  out=$(docker exec -i frigate python3 - "$s" $dims < "$S" 2>&1)
+  command_rc=0
+  out=$(docker exec -i frigate python3 - "$s" $dims < "$S" 2>&1) || command_rc=$?
   res=$(echo "$out" | grep -o '"RESULT": "[A-Z]*"' | cut -d'"' -f4)
   mp4=$(echo "$out" | grep '"fragmented_mp4"' | grep -o '"video_frames": "[0-9]*"' | cut -d'"' -f4)
   aac=$(echo "$out" | grep '"codec": "aac"' | grep -o '"rms_dbfs": [-0-9.]*' | sed 's/.*: //')
@@ -61,7 +62,10 @@ d=c['detect']; print(d['width'], d['height'])" 2>/dev/null)
   fi
   printf '  %-15s %-5s  dims=%-9s video_frames=%-5s aac_rms=%-8s opus_rms=%-8s\n' \
     "$s" "$res" "${dims// /x}" "${mp4:-0}" "${aac:-n/a}" "${opus:-n/a}"
-  [ "$res" = "PASS" ] || rc=1
+  if [ "$res" != "PASS" ] || [ "$command_rc" -ne 0 ]; then
+    echo "$out"
+    rc=1
+  fi
 done
 
 if [ $rc -eq 0 ]; then
