@@ -181,6 +181,13 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
+**Recovery and diagnostics (2026-09-12):** the running Frigate/Tailscale images
+are now pinned by digest. `scripts/restart-nvr.sh --apply` coordinates their
+recreation and readiness checks; its default `--check` mode changes nothing.
+The local status check now fails on missing cameras or stale recordings.
+See [the disconnect, recovery and storage review](docs/recovery-and-disconnect-review.md)
+for measured gaps, storage results and the unresolved reliability limits.
+
 **Data-saver live viewing (2026-09-12):** all six cameras default to a GPU-scaled
 960-pixel-wide stream, targeting 10 fps, with **Full resolution** available in
 the live stream selector. Sampled traffic was about 0.46–0.47 Mbps per camera;

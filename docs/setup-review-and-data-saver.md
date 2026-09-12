@@ -2,6 +2,10 @@
 
 ## Assessment
 
+Follow-up: [recovery and disconnect investigation](recovery-and-disconnect-review.md)
+records the subsequent image pins, coordinated restart helper, fail-closed
+status check and storage measurements. Findings below describe the initial review.
+
 The system now has a workable recording pipeline and corrected live timestamps,
 but reliability is its biggest weakness. Camera firmware failures, the Windows
 and WSL lifecycle, and insufficient independent monitoring matter more than
