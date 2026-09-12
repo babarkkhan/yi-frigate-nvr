@@ -1,75 +1,24 @@
-# Frigate 0.17.x - home NVR
-# Six Yi cameras on local-only custom firmware (cloud disabled).
+# Frigate 0.17.x - six local-only Yi cameras, GPU detection and live encoding.
+# Recording/detection use one direct full-resolution camera input each.
+# Corrected full-resolution live viewing adds one on-demand camera connection.
+# Data-saver viewing consumes that LOCAL live stream, not a third camera input.
+# See docs/setup-review-and-data-saver.md for architecture and operating limits.
 #
-# Design notes, all learned by debugging this stack - see docs/nvr-findings.md:
-#  1. Each camera exposes ONE rtsp stream (ch0_0, main). ch0_1 is 404 because
-#     upstream warns against enabling both streams on these weak SoCs. Since
-#     detect and record share a single input, Frigate opens exactly ONE
-#     connection per camera for recording/detection. The cam5 listening pilot
-#     adds one on-demand go2rtc connection while live audio is being viewed.
-#  2. detect width/height are set explicitly. Without them Frigate probes the
-#     stream, and a probe timeout hits an upstream bug that crashes Frigate.
-#  3. record uses audio-aac, NOT audio-copy. The MStar cameras emit PCM mu-law,
-#     which MP4 cannot contain - audio-copy makes recording fail outright.
+# All six cameras emit PCM audio with a half-speed source clock. Full live feeds
+# rebuild audio timestamps and reset copied video PTS/DTS to remove mux delay.
+# Proven recording arguments remain separate and unchanged.
+# Cam6 still has RTSP_STREAM=both on-camera; the other cameras use high.
+# Do not enable extra camera streams as a shortcut to lower-bandwidth viewing.
 
 mqtt:
   enabled: false
 
-# Live-listening pilot only. Keep the proven recording inputs unchanged until
-# browser audio and stability are verified. One FFmpeg input supplies copied
-# video plus AAC and Opus audio, using one additional camera connection.
-# The measured cam5 audio RTP clock advances at roughly half real time.
-# Build live-audio timestamps from sample count; leave recording args unchanged.
-# Reset copied video PTS/DTS too: otherwise its probe-time offset relative to
-# zero-based audio adds seconds of live latency. See docs/live-latency-fix.md.
-# See docs/live-audio-pilot.md for validation, limitations, and rollback.
-#
-# ROLLOUT NOTE 2026-09-12. cam2_living added as the second pilot camera, per
-# step 2 of the handoff: one MStar camera at a time, validating each camera's
-# own audio rather than assuming cam5's correction applies.
-#
-# Measured on all four MStar cameras before adding this - every one identical,
-# pcm_s16be 8000 Hz mono with the audio clock at half real time:
-#
-#   camera          codec      rate  req  decoded  ratio  rms dBFS
-#   cam1_mensroom   pcm_s16be  8000  10s  19.993s  2.00   -47.61
-#   cam2_living     pcm_s16be  8000  10s  19.878s  1.99   -35.13
-#   cam4_hallway    pcm_s16be  8000  10s  19.977s  2.00   -51.30
-#   cam5_laundry    pcm_s16be  8000  10s  19.974s  2.00   -46.07
-#
-# Read that ratio as decoded/requested, NOT wall/decoded: `-t` limits by the
-# stream's own timestamps, so wall/decoded looks like a healthy 1.0 and hides
-# the fault completely. See scripts/probe-camera-audio.py.
-#
-# 2026-09-12, later: cam1 and cam4 added at the owner's direction, completing
-# all four MStar cameras. Both were measured affected in the table above. Note
-# both are wedge-prone - cam1 has wedged three times and cam4 twice in the last
-# fortnight - and a wedged camera takes its live-audio stream down with it.
-# That is a pre-existing camera fault, not caused by this stanza; the stream
-# recovers when the camera is rebooted.
-#
-# Allwinner cam3 pilot: changing camera RTSP_AUDIO=yes to pcm and rebooting
-# enabled L16/8000 microphone audio. Measured decoded/requested=2.00, so its
-# live stream also needs sample-count timestamps.
-# See docs/live-audio-pilot-allwinner.md for evidence and rollout gates.
-#
-# 2026-09-12, cam6_extra: same change applied, completing all six cameras.
-# Gates followed from the Allwinner handoff - full settings saved first, exactly
-# one field changed (RTSP_AUDIO yes -> pcm, verified by diffing the complete
-# before/after settings), camera rebooted, then its source MEASURED on its own
-# rather than assumed:
-#
-#   cam6_extra  pcm_s16be 8000 Hz mono  req=10s decoded=19.459s  ratio=1.95
-#               clock at 0.51x real time   RMS -37.7 dBFS
-#
-# So cam6 needs the same sample-count correction. Its signal is markedly
-# stronger than cam3's (-37.7 vs -57.82 dBFS).
-#
-# NOTE cam6 has RTSP_STREAM=both where every other camera has high. Design note
-# 1 above warns against enabling both streams on these weak SoCs. That is a
-# pre-existing divergence, not introduced here, and was deliberately left alone
-# - changing it is a separate change with its own baseline and rollback.
 go2rtc:
+  ffmpeg:
+    # GPU-only video resize/encode of the existing local full-resolution feed.
+    # Audio stays on the corrected timeline: copy AAC and provide Opus too.
+    mobile_input: "-hwaccel cuda -hwaccel_output_format cuda -fflags nobuffer -flags low_delay -timeout 5000000 -analyzeduration 1000000 -probesize 1000000 -rtsp_transport tcp -i {input}"
+    mobile: "-c:v h264_nvenc -preset p2 -tune ull -zerolatency 1 -bf 0 -g 10 -r 10 -b:v 400k -maxrate:v 600k -bufsize:v 600k"
   streams:
     cam1_mensroom:
       - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
@@ -83,6 +32,20 @@ go2rtc:
       - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam6_extra:
       - "ffmpeg:rtsp://192.168.3.6/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+    # Data-saver streams consume the local restream, not a third camera input.
+    # -2 preserves aspect ratio: 960x544 on MStar, 960x540 on Allwinner.
+    cam1_mensroom_mobile:
+      - "ffmpeg:cam1_mensroom#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+    cam2_living_mobile:
+      - "ffmpeg:cam2_living#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+    cam3_kitchen_mobile:
+      - "ffmpeg:cam3_kitchen#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+    cam4_hallway_mobile:
+      - "ffmpeg:cam4_hallway#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+    cam5_laundry_mobile:
+      - "ffmpeg:cam5_laundry#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+    cam6_extra_mobile:
+      - "ffmpeg:cam6_extra#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
 
 # ---------------------------------------------------------------------------
 # Detector - RTX 4080 SUPER via ONNX/TensorRT
@@ -185,6 +148,10 @@ cameras:
   # MStar y203c cameras report 1920x1088
   cam1_mensroom:
     enabled: true
+    live:
+      streams:
+        Data saver: cam1_mensroom_mobile
+        Full resolution: cam1_mensroom
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.5/ch0_0.h264
@@ -195,6 +162,10 @@ cameras:
 
   cam2_living:
     enabled: true
+    live:
+      streams:
+        Data saver: cam2_living_mobile
+        Full resolution: cam2_living
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.22/ch0_0.h264
@@ -205,6 +176,10 @@ cameras:
 
   cam4_hallway:
     enabled: true
+    live:
+      streams:
+        Data saver: cam4_hallway_mobile
+        Full resolution: cam4_hallway
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.4/ch0_0.h264
@@ -215,6 +190,10 @@ cameras:
 
   cam5_laundry:
     enabled: true
+    live:
+      streams:
+        Data saver: cam5_laundry_mobile
+        Full resolution: cam5_laundry
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.149/ch0_0.h264
@@ -226,6 +205,10 @@ cameras:
   # Allwinner y20ga cameras report 1920x1080
   cam3_kitchen:
     enabled: true
+    live:
+      streams:
+        Data saver: cam3_kitchen_mobile
+        Full resolution: cam3_kitchen
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.3/ch0_0.h264
@@ -236,6 +219,10 @@ cameras:
 
   cam6_extra:
     enabled: true
+    live:
+      streams:
+        Data saver: cam6_extra_mobile
+        Full resolution: cam6_extra
     ffmpeg:
       inputs:
         - path: rtsp://192.168.3.6/ch0_0.h264

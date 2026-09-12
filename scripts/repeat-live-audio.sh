@@ -9,16 +9,12 @@
 # (1920x1080) and would have reported false failures for them.
 set -uo pipefail
 S="$(dirname "$(readlink -f "$0")")/verify-live-audio-any.py"
+D="$(dirname "$S")/live-stream-dimensions.py"
 stream=${1:-cam5_laundry}; n=${2:-5}
 [[ "$n" =~ ^[1-9][0-9]*$ ]] || { echo 'FATAL: runs must be a positive integer'; exit 2; }
 
-dims=$(docker exec frigate python3 -c "
-import yaml,sys
-c=yaml.safe_load(open('/config/config.yml')).get('cameras',{}).get('$stream')
-if not c: sys.exit(3)
-d=c['detect']; print(d['width'], d['height'])" 2>/dev/null)
-if [ -z "$dims" ]; then
-  echo "FATAL: no camera key '$stream' in the live config - cannot get dimensions"
+if ! dims=$(docker exec -i frigate python3 - "$stream" < "$D" 2>&1); then
+  echo "FATAL: cannot get dimensions for '$stream': $dims"
   exit 2
 fi
 echo "hammering $stream at ${dims// /x}, $n runs"

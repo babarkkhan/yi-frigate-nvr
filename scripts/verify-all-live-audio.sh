@@ -8,16 +8,19 @@
 # reports success without having checked anything is worse than no check.
 #
 # It now fails closed: an empty or unreadable stream list is an error, a stream
-# with no matching camera key is an error rather than silently falling back to
-# default dimensions, and an unparseable verifier result is an error. Optionally
+# with unknown dimensions is an error rather than silently falling back to
+# defaults, and an unparseable verifier result is an error. The dimension helper
+# supports full camera streams and this repo's GPU-scaled aliases. Optionally
 # pass the number of streams you EXPECT as $1 to assert the count as well.
 set -uo pipefail
 
 S="$(dirname "$(readlink -f "$0")")/verify-live-audio-any.py"
+D="$(dirname "$S")/live-stream-dimensions.py"
 expect=${1:-}
 rc=0
 
 [ -r "$S" ] || { echo "FATAL: verifier not readable at $S"; exit 2; }
+[ -r "$D" ] || { echo "FATAL: dimension helper not readable at $D"; exit 2; }
 
 streams=$(docker exec frigate python3 -c "
 import yaml
@@ -38,13 +41,8 @@ fi
 echo "verifying $count stream(s): $streams"
 
 for s in $streams; do
-  dims=$(docker exec frigate python3 -c "
-import yaml,sys
-c=yaml.safe_load(open('/config/config.yml')).get('cameras',{}).get('$s')
-if not c: sys.exit(3)
-d=c['detect']; print(d['width'], d['height'])" 2>/dev/null)
-  if [ -z "$dims" ]; then
-    printf '  %-15s ERROR  no matching camera key - cannot determine dimensions\n' "$s"
+  if ! dims=$(docker exec -i frigate python3 - "$s" < "$D" 2>&1); then
+    printf '  %-15s ERROR  cannot determine expected dimensions: %s\n' "$s" "$dims"
     rc=1; continue
   fi
 

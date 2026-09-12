@@ -181,6 +181,13 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
+**Data-saver live viewing (2026-09-12):** all six cameras default to a GPU-scaled
+960-pixel-wide stream, targeting 10 fps, with **Full resolution** available in
+the live stream selector. Sampled traffic was about 0.46–0.47 Mbps per camera;
+recording quality is unchanged. Phone acceptance and long-term reliability
+remain to be checked. See the [setup review and measurements](docs/setup-review-and-data-saver.md)
+for the architecture, limitations, and prioritized improvements.
+
 **Live audio (2026-09-12): all six cameras.** Each has a go2rtc live stream
 carrying AAC and Opus audio. Recording inputs remain direct to the cameras and
 were never modified.
@@ -217,9 +224,9 @@ the rest show signal, which is not intelligibility. An intermittent
 audio failure on rapid open/reconnect remains unresolved: isolated runs passed
 5/5 while one sequential sweep failed 2 of 6. Failures occur on different
 cameras; resource contention has not been isolated as the cause.
-Latency, off-LAN acceptance and long-term reconnect
-reliability are all unverified. Recording and detection were unaffected
-throughout — all six held 5.0–5.1 fps with the detector at 7.7 ms.
+Off-LAN acceptance and long-term reconnect reliability remain unverified.
+During the original audio rollout checks, all six held 5.0–5.1 fps with the
+detector at 7.7 ms; these snapshots do not establish uninterrupted recording.
 
 **Latency correction:** all six streams now reset copied video timestamps
 alongside the existing audio correction. Added NVR video delay measures about
