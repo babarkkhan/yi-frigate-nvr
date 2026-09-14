@@ -18,6 +18,8 @@ services:
 
     ports:
       - "5000:5000"     # web UI
+      # Authenticated proxy endpoint for the outbound SSH gateway only.
+      - "127.0.0.1:18971:8971"
       - "8554:8554"     # go2rtc RTSP restream
       - "8555:8555/tcp" # WebRTC
       - "8555:8555/udp"

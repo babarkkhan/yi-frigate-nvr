@@ -1,8 +1,9 @@
 # Yi cameras → local Frigate NVR
 
 Six Yi cameras taken off the vendor cloud and onto a local, GPU-accelerated
-[Frigate](https://frigate.video) NVR, reachable remotely over Tailscale with
-nothing exposed to the public internet.
+[Frigate](https://frigate.video) NVR. Trusted administration uses the LAN or
+Tailscale. An optional Google-authenticated HTTPS gateway provides remote viewing
+without a phone VPN; see [the gateway deployment notes](docs/google-camera-gateway.md).
 
 This repo is the working configuration **plus the findings** — including three
 firmware bugs that cost real time to isolate. If you are doing the same thing,
@@ -181,6 +182,12 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 ## What is running
 
+**Google camera gateway (2026-09-15):** the Hetzner relay, restricted outbound SSH
+tunnel, Google login gate and read-only Frigate endpoint are deployed. All six
+Data saver streams passed relay/audio decoding checks. Public launch still needs
+the `cam` DNS record and a real Google-login/phone playback check. See
+[deployment, evidence and rollback](docs/google-camera-gateway.md).
+
 **Recovery and diagnostics (2026-09-12):** the running Frigate/Tailscale images
 are now pinned by digest. `scripts/restart-nvr.sh --apply` coordinates their
 recreation and readiness checks; its default `--check` mode changes nothing.
@@ -263,7 +270,9 @@ See [the MStar handoff](docs/live-audio-pilot.md),
         │              ONNX/TensorRT on an RTX 4080, ~6-8 ms inference
         │              2-day continuous, 14d alerts, 7d detections
         ├──► web UI on :5000                    LAN, full speed
-        ├──► http://<host>:5000 over the tailnet  PREFERRED remote path
+        ├──► http://<host>:5000 over the tailnet  trusted administration
+        ├──► loopback :18971 → SSH → Hetzner HTTPS + Google login
+        │                           cam.example.com (DNS pending)
         └──► Tailscale Serve ──► https://<host>.<tailnet>.ts.net
                                  tailnet only, Funnel deliberately off
                                  works, but ~12x slower - see finding 6
@@ -284,6 +293,7 @@ compose.yaml                  Frigate, NVIDIA GPU
 compose.tailscale.yaml        opt-in remote access overlay
 services/nvr/config/          Frigate config.yml
 services/tailscale/           Tailscale Serve config
+services/gateway/             Caddy site, restricted SSH account, tunnel service
 secrets/*.example             copy to *.env, gitignored
 scripts/
   prime-sd.ps1                write firmware to an SD card, verified by SHA-256

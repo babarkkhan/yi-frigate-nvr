@@ -1,0 +1,37 @@
+# Imported by the existing Hetzner /etc/caddy/Caddyfile.
+# Replace example.com with the deployment's actual domain before installation.
+# The secret snippet contains only: header_up X-Proxy-Secret <private value>
+cam.example.com {
+    route {
+        # Discard client-supplied identity before asking the real auth gateway.
+        request_header -X-Auth-Request-*
+        request_header -Remote-*
+        request_header -X-Forwarded-User
+        request_header -X-Forwarded-Groups
+        request_header -X-Proxy-Secret
+        request_header -Authorization
+        forward_auth 127.0.0.1:4180 {
+            uri /oauth2/auth
+            copy_headers X-Auth-Request-Email
+            @unauthorized status 401
+            handle_response @unauthorized {
+                # Fixed post-login destination avoids URL/query redirect injection.
+                redir https://auth.example.com/oauth2/start?rd=https%3A%2F%2Fcam.example.com%2F 302
+            }
+        }
+        reverse_proxy 127.0.0.1:18971 {
+            header_up X-Forwarded-User {http.request.header.X-Auth-Request-Email}
+            header_up X-Forwarded-Groups viewer
+            header_up -Remote-*
+            import /etc/caddy/cam-proxy-secret.caddy
+            flush_interval -1
+            # Caddy 2.6 authenticates a WebSocket at connection time.
+            # Force a Caddy reload to disconnect streams after urgent revocation.
+        }
+    }
+    header {
+        Cache-Control "private, no-store"
+        Referrer-Policy "same-origin"
+        defer
+    }
+}

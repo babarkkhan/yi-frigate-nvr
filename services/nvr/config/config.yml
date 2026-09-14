@@ -13,6 +13,21 @@
 mqtt:
   enabled: false
 
+# Google authentication is enforced by the Hetzner gateway. Port 8971 also
+# requires its secret and maps trusted headers to a read-only viewer.
+# Port 5000 retains its existing trusted-LAN/tailnet behavior; never publish it.
+auth:
+  enabled: false
+tls:
+  enabled: false  # the 8971 hop stays inside loopback + encrypted SSH
+proxy:
+  auth_secret: "{FRIGATE_PROXY_SECRET}"
+  default_role: viewer
+  header_map:
+    user: x-forwarded-user
+    role: x-forwarded-groups
+  logout_url: https://auth.example.com/oauth2/sign_out
+
 go2rtc:
   ffmpeg:
     # GPU-only video resize/encode of the existing local full-resolution feed.
