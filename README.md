@@ -184,8 +184,8 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 
 **Google camera gateway (2026-09-15):** the Hetzner relay, restricted outbound SSH
 tunnel, Google login gate and read-only Frigate endpoint are deployed. All six
-Data saver streams passed relay/audio decoding checks. Public launch still needs
-the `cam` DNS record and a real Google-login/phone playback check. See
+Data saver streams passed relay/audio decoding checks. DNS and HTTPS now pass;
+a real Google-login/phone playback check remains. See
 [deployment, evidence and rollback](docs/google-camera-gateway.md).
 
 **Recovery and diagnostics (2026-09-12):** the running Frigate/Tailscale images
@@ -272,7 +272,7 @@ See [the MStar handoff](docs/live-audio-pilot.md),
         ├──► web UI on :5000                    LAN, full speed
         ├──► http://<host>:5000 over the tailnet  trusted administration
         ├──► loopback :18971 → SSH → Hetzner HTTPS + Google login
-        │                           cam.example.com (DNS pending)
+        │                           cam.example.com (replace example domain)
         └──► Tailscale Serve ──► https://<host>.<tailnet>.ts.net
                                  tailnet only, Funnel deliberately off
                                  works, but ~12x slower - see finding 6

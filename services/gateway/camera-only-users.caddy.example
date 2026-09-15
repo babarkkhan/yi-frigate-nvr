@@ -1,0 +1,5 @@
+# Install privately as /etc/caddy/camera-only-users.caddy, substituting emails.
+# Import inside each protected non-camera site's route AFTER forward_auth and
+# BEFORE its upstream handler. Strip client X-Auth-Request-Email before auth.
+@camera_only_user header X-Auth-Request-Email camera-viewer@example.com
+respond @camera_only_user "Forbidden" 403

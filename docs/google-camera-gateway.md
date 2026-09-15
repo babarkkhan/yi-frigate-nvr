@@ -6,7 +6,7 @@ The private deployment repository holds the installed values. Do not overwrite
 those values by copying a public template directly onto a running system.
 
 Deployment: **2026-09-15, Riyadh time**. The gateway and tunnel are running.
-**Public launch is pending DNS and real Google-login/phone acceptance.**
+**DNS and HTTPS are verified. Real Google-login/phone acceptance remains pending.**
 
 ## What the owner needs to do
 
@@ -24,8 +24,8 @@ Deployment: **2026-09-15, Riyadh time**. The gateway and tunnel are running.
 2. Once DNS resolves, open **https://cam.example.com** and sign in with the
    Google account already allowed by the server's existing login. The Google
    OAuth callback remains on `auth.example.com`; no new OAuth client is needed.
-   One email is currently allowlisted. Additional accounts require an explicit
-   allowlist change by the owner/developer.
+   Additional accounts require an explicit allowlist change by the
+   owner/developer and an application-authorization review as described below.
 
 3. Turn off Tailscale on the phone and test on mobile data as well as home Wi-Fi:
    open a camera, unmute, switch Data saver / Full resolution, and play a recent
@@ -74,6 +74,30 @@ deployment; bandwidth grows with viewer-hours and stream bitrate. Existing
 applications and sites were preserved. No package upgrade was performed.
 
 ## Files and trust boundaries
+
+### Guests on a shared Google login
+
+Adding a camera guest to the shared OAuth email list can also admit them to
+other applications using that login. Install application-specific authorization
+before expanding that list. This deployment adds the private
+`camera-only-users.caddy` guard to the existing portal, after `forward_auth` and
+before its upstream, inside an explicit `route` block. Clear client-supplied
+`X-Auth-Request-Email` before authentication. The example in `services/gateway/`
+contains a placeholder; actual email addresses stay in the private deployment.
+
+The added camera viewer is denied by that portal guard. Existing portal users
+and the pre-existing allowed-email-domain policy are preserved. Additional
+protected applications must define their own authorization policy before
+reusing this shared login. Public applications are unaffected.
+
+An isolated auth-stub test using the installed Caddy routes verified camera
+viewer access (200), Frigate administration denial (403), guest portal denial
+(403), retained existing portal access (200), and anonymous redirects (302).
+The camera test used the real Frigate backend through the SSH relay. It did not
+perform the guest's actual Google sign-in. The six-camera health check passed
+after the OAuth service restart.
+
+### Installed files
 
 | Location | Purpose |
 |---|---|
