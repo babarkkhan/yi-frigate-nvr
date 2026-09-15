@@ -33,8 +33,18 @@ services:
         tmpfs:
           size: 1000000000
 
+    # Required by the reviewed cam1 speaker bridge. Configuration access must
+    # remain private: this opt-in allows command sources instance-wide.
+    environment:
+      GO2RTC_ALLOW_ARBITRARY_EXEC: "true"
+
     env_file:
       - ./secrets/frigate.env
+
+    # WSL GPU device: retain access across systemd unit reloads.
+    # Remove this WSL-specific mapping on a native Linux deployment.
+    devices:
+      - /dev/dxg:/dev/dxg
 
     # NVIDIA GPU. Requires the NVIDIA Container Toolkit inside WSL.
     # Comment this whole block out to run CPU-only.

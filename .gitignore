@@ -7,6 +7,7 @@ secrets/*.json
 services/nvr/config/frigate.db*
 services/nvr/config/model_cache/
 services/nvr/config/.jwt_secret
+services/nvr/config/.live-talk/
 services/nvr/config/.exports/
 services/nvr/config/.timeline/
 services/nvr/config/.vacuum

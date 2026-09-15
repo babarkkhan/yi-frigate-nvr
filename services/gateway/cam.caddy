@@ -19,6 +19,14 @@ cam.example.com {
                 redir https://auth.example.com/oauth2/start?rd=https%3A%2F%2Fcam.example.com%2F 302
             }
         }
+        # Replace both example identities with the explicitly approved accounts.
+        # MSE and WebRTC websocket paths share the same upstream handler.
+        # Restrict all aliases; a WebRTC-only path guard is insufficient.
+        @webrtc_denied {
+            path /live/webrtc/* /live/mse/* /api/go2rtc/api* /api/go2rtc/webrtc*
+            not header_regexp talk_user X-Auth-Request-Email ^(owner@example[.]com|partner@example[.]com)$
+        }
+        respond @webrtc_denied "WebRTC access is not enabled for this account." 403
         reverse_proxy 127.0.0.1:18971 {
             header_up X-Forwarded-User {http.request.header.X-Auth-Request-Email}
             header_up X-Forwarded-Groups viewer

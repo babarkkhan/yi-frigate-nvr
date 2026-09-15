@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 EnvironmentFile=/etc/home-nvr/tunnel.env
-ExecStart=/usr/bin/ssh -NT -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/home-nvr/known_hosts -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ConnectTimeout=10 -i /etc/home-nvr/tunnel_ed25519 -R 127.0.0.1:18971:127.0.0.1:18971 nvr-tunnel@${NVR_RELAY_HOST}
+ExecStart=/usr/bin/ssh -NT -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/home-nvr/known_hosts -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ConnectTimeout=10 -i /etc/home-nvr/tunnel_ed25519 -R 127.0.0.1:18971:127.0.0.1:18971 -R 127.0.0.1:18555:127.0.0.1:8555 nvr-tunnel@${NVR_RELAY_HOST}
 Restart=always
 RestartSec=10
 NoNewPrivileges=true

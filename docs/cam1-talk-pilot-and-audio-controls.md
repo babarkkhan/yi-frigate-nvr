@@ -1,5 +1,10 @@
 # Cam1 speaker pilot and intermittent audio controls
 
+> **Update:** the owner selected live intercom inside Frigate and rejected the
+> separate record-and-send page, which has been removed. See the
+> [native live-talk pilot](cam1-native-live-talk.md) for the current implementation.
+> The clip test and options below are the earlier investigation.
+
 The owner confirmed that phone playback and ongoing latency are acceptable.
 The remaining listening issue is an intermittent missing speaker control inside
 a single camera's live view. Cam1 was selected for the speaker pilot.

@@ -1,0 +1,8 @@
+# Install with --no-deps --target /config/.live-talk/vendor.
+# cryptography==44.0.3 comes from the pinned Frigate image; do not upgrade it globally.
+paramiko==4.0.0
+bcrypt==5.0.0
+invoke==3.0.3
+pynacl==1.6.2
+cffi==2.1.1
+pycparser==3.0

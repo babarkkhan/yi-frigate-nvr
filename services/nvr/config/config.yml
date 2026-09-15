@@ -29,6 +29,16 @@ proxy:
   logout_url: https://auth.example.com/oauth2/sign_out
 
 go2rtc:
+  # Optional cam1 live-talk pilot: provision the private bridge credentials and
+  # VPS relay first. Replace this documentation-only address with the VPS IPv4.
+  # See docs/cam1-native-live-talk.md before deploying this configuration.
+  webrtc:
+    listen: ":8555/tcp"
+    candidates: ["203.0.113.10:8555"]
+    ice_servers: []
+    filters:
+      candidates: []
+      networks: ["tcp4"]
   ffmpeg:
     # GPU-only video resize/encode of the existing local full-resolution feed.
     # Audio stays on the corrected timeline: copy AAC and provide Opus too.
@@ -37,6 +47,7 @@ go2rtc:
   streams:
     cam1_mensroom:
       - "ffmpeg:rtsp://192.168.3.5/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py#backchannel=1#audio=alaw/8000"
     cam2_living:
       - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
     cam3_kitchen:
@@ -51,6 +62,7 @@ go2rtc:
     # -2 preserves aspect ratio: 960x544 on MStar, 960x540 on Allwinner.
     cam1_mensroom_mobile:
       - "ffmpeg:cam1_mensroom#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py#backchannel=1#audio=alaw/8000"
     cam2_living_mobile:
       - "ffmpeg:cam2_living#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
     cam3_kitchen_mobile:

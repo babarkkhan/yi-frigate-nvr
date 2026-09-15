@@ -1,5 +1,11 @@
 # Google-authenticated camera website
 
+> **Live-talk update:** the cam1 pilot adds an encrypted TCP media relay on VPS
+> port 8555, a second loopback SSH forward on 18555, and two-account restrictions
+> across the shared MSE/WebRTC signalling routes. Follow
+> [the native live-talk notes](cam1-native-live-talk.md) alongside this original
+> viewing-only deployment guide; retain both tunnel permission entries.
+
 **Public templates are sanitized.** Replace `example.com` and the documentation
 address `203.0.113.10` with your own domain and relay IP before deployment.
 The private deployment repository holds the installed values. Do not overwrite

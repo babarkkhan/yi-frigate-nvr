@@ -86,7 +86,10 @@ the track. So on MStar hardware you can have **stable streaming or two-way
 audio through that RTSP backchannel, not both**. A later cam1 pilot confirmed
 audible speaker uploads through the separate HTTP path without changing the
 stable daemon. See [the cam1 speaker pilot](docs/cam1-talk-pilot-and-audio-controls.md);
-continuous live push-to-talk still needs a transport.
+the subsequent [native Frigate live-talk pilot](docs/cam1-native-live-talk.md)
+streams through a restricted SSH speaker bridge while retaining that daemon.
+The owner confirmed a phone call works in both directions; slight same-room
+echo remains to be checked from a separate room.
 
 ### 4. Frigate 0.17.2 crash-loops when a camera probe times out
 

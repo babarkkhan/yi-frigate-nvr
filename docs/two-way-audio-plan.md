@@ -1,4 +1,10 @@
-# Two-way audio: cam1 speaker playback confirmed; live transport pending
+# Two-way audio: historical RTSP investigation
+
+> **Current pilot:** cam1 now has a streaming SSH speaker bridge exposed through
+> Frigate's native microphone control. The owner confirmed both the streamed
+> phrase and a phone call in both directions, with slight same-room echo. See
+> [native live-talk deployment and evidence](cam1-native-live-talk.md).
+> The findings below predate this bridge and do not describe the current setup.
 
 > **Latest:** the owner clearly heard a 16 kHz multipart spoken upload on cam1,
 > with the stable alternative daemon and `ONVIF_AUDIO_BC=NONE`. The separate

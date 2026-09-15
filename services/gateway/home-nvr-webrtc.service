@@ -1,0 +1,16 @@
+[Unit]
+Description=Forward WebRTC TCP media into the restricted home tunnel
+Requires=home-nvr-webrtc.socket
+After=home-nvr-webrtc.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=64 --exit-idle-time=60s 127.0.0.1:18555
+DynamicUser=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+MemoryMax=64M
+TasksMax=8

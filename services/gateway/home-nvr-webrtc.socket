@@ -1,0 +1,10 @@
+[Unit]
+Description=Encrypted WebRTC media relay for the camera gateway
+
+[Socket]
+ListenStream=0.0.0.0:8555
+NoDelay=true
+Backlog=64
+
+[Install]
+WantedBy=sockets.target
