@@ -5,7 +5,6 @@ This checks the private transport and Frigate authorization, not Google login,
 public DNS/TLS, decodability, or notifications. Requires the private Caddy snippet.
 """
 import argparse
-import concurrent.futures
 import json
 from pathlib import Path
 import shlex
@@ -72,8 +71,9 @@ def main():
                         # Segment end timestamps can lead wall time slightly.
                         'ok': fps > 0 and age is not None and -5 <= age <= args.max_age}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        cameras = dict(pool.map(camera_check, sorted(expected)))
+    # Six concurrent history reads timed out on this deployment while the same
+    # reads passed sequentially. Keep the existing timeout/freshness thresholds.
+    cameras = dict(camera_check(camera) for camera in sorted(expected))
     problems += [f'{camera}: capture or recording stale' for camera, state in cameras.items() if not state['ok']]
     print(json.dumps({'ok': not problems, 'problems': problems, 'cameras': cameras}, sort_keys=True))
     return 1 if problems else 0

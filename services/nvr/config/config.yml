@@ -29,9 +29,9 @@ proxy:
   logout_url: https://auth.example.com/oauth2/sign_out
 
 go2rtc:
-  # Optional cam1 live-talk pilot: provision the private bridge credentials and
+  # Native live talk: provision each camera's private bridge credentials and
   # VPS relay first. Replace this documentation-only address with the VPS IPv4.
-  # See docs/cam1-native-live-talk.md before deploying this configuration.
+  # See docs/fleet-native-live-talk.md before deploying this configuration.
   webrtc:
     listen: ":8555/tcp"
     candidates: ["203.0.113.10:8555"]
@@ -50,14 +50,19 @@ go2rtc:
       - "exec:python3 /config/live-talk/speaker_bridge.py#backchannel=1#audio=alaw/8000"
     cam2_living:
       - "ffmpeg:rtsp://192.168.3.22/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam2#backchannel=1#audio=alaw/8000"
     cam3_kitchen:
       - "ffmpeg:rtsp://192.168.3.3/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam3#backchannel=1#audio=alaw/8000"
     cam4_hallway:
       - "ffmpeg:rtsp://192.168.3.4/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam4#backchannel=1#audio=alaw/8000"
     cam5_laundry:
       - "ffmpeg:rtsp://192.168.3.149/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam5#backchannel=1#audio=alaw/8000"
     cam6_extra:
       - "ffmpeg:rtsp://192.168.3.6/ch0_0.h264#video=copy#audio=aac#audio=opus#raw=-bsf:v h264_metadata,setts=pts=PTS-STARTPTS:dts=DTS-STARTDTS -af asetpts=N/SR/TB"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam6#backchannel=1#audio=alaw/8000"
     # Data-saver streams consume the local restream, not a third camera input.
     # -2 preserves aspect ratio: 960x544 on MStar, 960x540 on Allwinner.
     cam1_mensroom_mobile:
@@ -65,14 +70,19 @@ go2rtc:
       - "exec:python3 /config/live-talk/speaker_bridge.py#backchannel=1#audio=alaw/8000"
     cam2_living_mobile:
       - "ffmpeg:cam2_living#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam2#backchannel=1#audio=alaw/8000"
     cam3_kitchen_mobile:
       - "ffmpeg:cam3_kitchen#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam3#backchannel=1#audio=alaw/8000"
     cam4_hallway_mobile:
       - "ffmpeg:cam4_hallway#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam4#backchannel=1#audio=alaw/8000"
     cam5_laundry_mobile:
       - "ffmpeg:cam5_laundry#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam5#backchannel=1#audio=alaw/8000"
     cam6_extra_mobile:
       - "ffmpeg:cam6_extra#input=mobile_input#video=mobile#audio=copy#audio=opus#raw=-vf scale_cuda=960:-2"
+      - "exec:python3 /config/live-talk/speaker_bridge.py cam6#backchannel=1#audio=alaw/8000"
 
 # ---------------------------------------------------------------------------
 # Detector - RTX 4080 SUPER via ONNX/TensorRT

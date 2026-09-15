@@ -16,6 +16,14 @@ spec.loader.exec_module(bridge)
 
 
 class SpeakerBridgeTests(unittest.TestCase):
+    def test_camera_credentials_are_separate_and_cam1_is_compatible(self):
+        self.assertEqual(bridge.credentials_path('cam1'), bridge.PRIVATE)
+        for i in range(2, 7):
+            self.assertEqual(bridge.credentials_path(f'cam{i}'), bridge.PRIVATE / f'cam{i}')
+        for invalid in ['../cam1', '/tmp', 'cam7', '']:
+            with self.assertRaises(ValueError):
+                bridge.credentials_path(invalid)
+
     def run_bridge(self, data, connect_error=None, status=0):
         client = MagicMock()
         channel = client.get_transport.return_value.open_session.return_value

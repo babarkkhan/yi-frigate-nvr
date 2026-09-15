@@ -5,6 +5,7 @@ No HTTP endpoint, no buffering into messages and no automatic delivery retries.
 The pinned Frigate image supplies Python 3.11/audioop and cryptography 44.0.3.
 Additional SSH packages live only in the private vendor directory.
 """
+import argparse
 import audioop
 import json
 import os
@@ -19,12 +20,20 @@ sys.path.insert(0, str(PRIVATE / "vendor"))
 import paramiko
 
 
-def main():
-    config = json.loads((PRIVATE / "bridge.json").read_text())
+def credentials_path(camera):
+    if camera not in ("cam1", "cam2", "cam3", "cam4", "cam5", "cam6"):
+        raise ValueError("unknown camera")
+    # Retain the original cam1 credentials so its validated deployment is intact.
+    return PRIVATE if camera == "cam1" else PRIVATE / camera
+
+
+def main(camera="cam1"):
+    private = credentials_path(camera)
+    config = json.loads((private / "bridge.json").read_text())
     client = paramiko.SSHClient()
-    client.load_host_keys(str(PRIVATE / "known_hosts"))
+    client.load_host_keys(str(private / "known_hosts"))
     # Default RejectPolicy: never trust a changed/new camera host key silently.
-    key = paramiko.RSAKey.from_private_key_file(str(PRIVATE / "speaker_key"))
+    key = paramiko.RSAKey.from_private_key_file(str(private / "speaker_key"))
     channel = None
     total = 0
     try:
@@ -68,4 +77,6 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("camera", nargs="?", default="cam1", choices=[f"cam{i}" for i in range(1, 7)])
+    raise SystemExit(main(parser.parse_args().camera))

@@ -90,6 +90,9 @@ the subsequent [native Frigate live-talk pilot](docs/cam1-native-live-talk.md)
 streams through a restricted SSH speaker bridge while retaining that daemon.
 The owner confirmed a phone call works in both directions; slight same-room
 echo remains to be checked from a separate room.
+The subsequent [six-camera rollout](docs/fleet-native-live-talk.md) uses
+separate speaker credentials for every camera. Audible acceptance of cam2–cam6
+is deferred at the owner's request.
 
 ### 4. Frigate 0.17.2 crash-loops when a camera probe times out
 

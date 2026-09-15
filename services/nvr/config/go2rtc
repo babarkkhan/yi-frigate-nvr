@@ -1,0 +1,5 @@
+#!/bin/sh
+# Keep the pinned bundled go2rtc; correct its generated ICE address selection.
+set -eu
+python3 /config/live-talk/prepare_webrtc.py
+exec /usr/local/go2rtc/bin/go2rtc "$@"

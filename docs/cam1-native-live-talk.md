@@ -1,5 +1,9 @@
 # Cam1 native Frigate live-talk pilot
 
+> **Fleet extension:** the owner subsequently authorized all six cameras. See
+> [the rollout notes](fleet-native-live-talk.md) for per-camera credentials and
+> validation. The rest of this document records the original cam1 pilot.
+
 This pilot uses the microphone toggle inside Frigate 0.17.2, on the men's room
 camera only. Both approved Google accounts may use it. The separate
 record-and-send page and service were removed at the owner's request.

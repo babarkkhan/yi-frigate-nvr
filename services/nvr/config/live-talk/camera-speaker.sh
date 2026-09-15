@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install only on the validated cam1 firmware, mode 700, owned by root.
+# Install on a verified Yi firmware with the speaker FIFO, mode 700, owned by root.
 # Replace 192.0.2.10 with the NVR source address observed in SSH_CONNECTION.
 case "$SSH_CONNECTION" in
 "192.0.2.10 "*) ;;
