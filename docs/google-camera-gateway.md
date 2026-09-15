@@ -6,7 +6,9 @@ The private deployment repository holds the installed values. Do not overwrite
 those values by copying a public template directly onto a running system.
 
 Deployment: **2026-09-15, Riyadh time**. The gateway and tunnel are running.
-**DNS and HTTPS are verified. Real Google-login/phone acceptance remains pending.**
+**DNS and HTTPS are verified. The owner confirmed phone playback and acceptable
+latency.** See [the audio-control follow-up](cam1-talk-pilot-and-audio-controls.md)
+for the intermittent speaker icon and cam1 speaker test.
 
 ## What the owner needs to do
 

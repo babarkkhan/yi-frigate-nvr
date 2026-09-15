@@ -68,7 +68,7 @@ by measurement, and the root cause is **not isolated** — see
 `docs/recording-corruption.md` and upstream
 [issue #593](https://github.com/roleoroleo/yi-hack-MStar/issues/593).
 
-### 3. Two-way audio requires the daemon that stalls
+### 3. The standard RTSP talk path requires the daemon that stalls
 
 Only `rRTSPServer` advertises the ONVIF audio backchannel. Proof, same camera,
 same config, only the daemon swapped:
@@ -83,7 +83,10 @@ m=audio  track1  (mic)            m=audio  track2  (mic)
 
 `rtsp_server_yi` accepts the `-b` flag without complaint and never advertises
 the track. So on MStar hardware you can have **stable streaming or two-way
-audio, not both**.
+audio through that RTSP backchannel, not both**. A later cam1 pilot confirmed
+audible speaker uploads through the separate HTTP path without changing the
+stable daemon. See [the cam1 speaker pilot](docs/cam1-talk-pilot-and-audio-controls.md);
+continuous live push-to-talk still needs a transport.
 
 ### 4. Frigate 0.17.2 crash-loops when a camera probe times out
 
@@ -185,7 +188,7 @@ body, and firmware version. See `docs/cameras.md` and `docs/bfus-decision.md`.
 **Google camera gateway (2026-09-15):** the Hetzner relay, restricted outbound SSH
 tunnel, Google login gate and read-only Frigate endpoint are deployed. All six
 Data saver streams passed relay/audio decoding checks. DNS and HTTPS now pass;
-a real Google-login/phone playback check remains. See
+the owner confirmed phone playback and acceptable latency. See
 [deployment, evidence and rollback](docs/google-camera-gateway.md).
 
 **Recovery and diagnostics (2026-09-12):** the running Frigate/Tailscale images

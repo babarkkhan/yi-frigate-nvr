@@ -1,4 +1,10 @@
-# Two-way audio (mic / talk) - investigated, BLOCKED by a firmware trade-off
+# Two-way audio: cam1 speaker playback confirmed; live transport pending
+
+> **Latest:** the owner clearly heard a 16 kHz multipart spoken upload on cam1,
+> with the stable alternative daemon and `ONVIF_AUDIO_BC=NONE`. The separate
+> speaker-upload path works on cam1. See [the pilot and next implementation
+> choices](cam1-talk-pilot-and-audio-controls.md). The sections below are historical
+> findings and do not describe the current go2rtc configuration.
 
 > **Follow-up 2026-09-12:** the measured missing RTSP backchannel remains a
 > blocker for the standard talk path. The broader conclusion about speaker
