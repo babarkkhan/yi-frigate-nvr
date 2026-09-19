@@ -1,5 +1,12 @@
 # Recording playback failure - root cause and fix, 2026-08-24
 
+> **Follow-up, 2026-09-19:** [Direct RTP capture and camera-side SEI-skip
+> testing](upstream-593-follow-up.md) confirmed malformed framing before
+> FFmpeg. Grabber `-s` avoided the MP4 symptom in a short reversible test,
+> although malformed RTP framing remained. The production rewrite filter is
+> retained. The historical statement below about structurally valid SEI does
+> not rule out an SEI-related packetization interaction.
+
 Symptom, seen in the Frigate UI on cam4:
 
     Failed to play recordings (error 3):
