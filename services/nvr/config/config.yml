@@ -1,4 +1,4 @@
-# Frigate 0.17.x - six local-only Yi cameras, GPU detection and live encoding.
+# Frigate 0.18.x - six local-only Yi cameras, GPU detection and live encoding.
 # Recording/detection use one direct full-resolution camera input each.
 # Corrected full-resolution live viewing adds one on-demand camera connection.
 # Data-saver viewing consumes that LOCAL live stream, not a third camera input.
@@ -267,4 +267,4 @@ cameras:
     detect:
       width: 1920
       height: 1080
-version: 0.17-0
+version: 0.18-0

@@ -3,8 +3,8 @@ name: home-nvr
 services:
   frigate:
     container_name: frigate
-    # Installed Frigate 0.17.2 (TensorRT), pinned without upgrading the image.
-    image: ghcr.io/blakeblackshear/frigate@sha256:8a364092b03561b9c08ac00730206e363a53d07ea0304f7d543b403b65432b5e
+    # Frigate 0.18.0 (TensorRT), validated 2026-09-27 and pinned by digest.
+    image: ghcr.io/blakeblackshear/frigate@sha256:82d7475ba7e5f950911bd9d06f2392de96881f39eeacd78824a526dde9b5cad9
     restart: unless-stopped
     stop_grace_period: 30s
 

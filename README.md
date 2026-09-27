@@ -9,6 +9,10 @@ This repo is the working configuration **plus the findings** — including three
 firmware bugs that cost real time to isolate. If you are doing the same thing,
 the `docs/` folder is the valuable part.
 
+Current deployment: Frigate **0.18.0 TensorRT**, pinned by image digest.
+See [upgrade validation and rollback](docs/frigate-018-upgrade.md) before upgrading
+an existing installation. The native intercom controls still need UI work.
+
 ---
 
 ## The findings, up front
@@ -275,7 +279,7 @@ See [the MStar handoff](docs/live-audio-pilot.md),
 6 Yi cameras (yi-hack, cloud disabled, ports 80+554 only)
         │  RTSP, one connection each
         ▼
-   Frigate 0.17.2  ── detect + record on a single stream per camera
+   Frigate 0.18.0  ── detect + record on a single stream per camera
         │              ONNX/TensorRT on an RTX 4080, ~6-8 ms inference
         │              2-day continuous, 14d alerts, 7d detections
         ├──► web UI on :5000                    LAN, full speed
