@@ -1,5 +1,10 @@
 # Camera fleet - final state, 2026-08-22
 
+**Later status, 2026-09-28:** this is the original commissioning snapshot.
+Cam2 now runs MStar **0.5.8** as a [one-camera pilot](mstar-058-pilot.md).
+All cameras subsequently gained [restricted SSH speaker bridges](fleet-native-live-talk.md),
+superseding the SSH-disabled policy below. Cam6 is currently intentionally unplugged.
+
 All six cameras flashed, configured, hardened, and verified.
 
 | # | Name | Hostname | IP | Platform | Hack | Stream |

@@ -1,5 +1,9 @@
 # Camera inventory — resolved 2026-08-22
 
+This is the original hardware/firmware matching record. As of September 28,
+cam2 alone has been upgraded to MStar **0.5.8**; see the
+[pilot results and upgrade precautions](mstar-058-pilot.md).
+
 | # | Name | Serial | Stock firmware | Platform | Model | Project | Package | Verdict |
 |---|---|---|---|---|---|---|---|---|
 | 1 | men's room | BFUSY21xxxxxxxxxxxx | 4.5.0.0C_201910080934 | MStar | y203c | yi-hack-MStar 0.5.7 | `y203c_0.5.7.tgz` | **SUPPORTED** |

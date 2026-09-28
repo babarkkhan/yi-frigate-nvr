@@ -13,6 +13,10 @@ Current deployment: Frigate **0.18.0 TensorRT**, pinned by image digest.
 See [upgrade validation and rollback](docs/frigate-018-upgrade.md) before upgrading
 an existing installation. The native intercom controls still need UI work.
 
+Camera firmware pilot, September 28: **cam2 only is on MStar 0.5.8**.
+[The pilot results](docs/mstar-058-pilot.md) show the original MP4/RTP defect
+persists; retain the workaround. Audible intercom acceptance is still pending.
+
 ---
 
 ## The findings, up front
@@ -228,9 +232,9 @@ The **Allwinner** units needed a camera-side change the MStar ones did not:
 silently yields a video-only stream. The camera must then be **rebooted** — the
 capture path is initialised at startup, and a config write alone does nothing.
 
-Every camera's audio was measured, never assumed. All six are `pcm_s16be`
-8000 Hz mono with the audio clock at **half real time**, so each needs
-`-af asetpts=N/SR/TB`:
+The initial fleet measurements found `pcm_s16be` 8000 Hz mono on all six,
+with the audio clock at **half real time**, leading to the live correction
+`-af asetpts=N/SR/TB`. These are the original measurements:
 
 | camera | platform | ratio | RMS dBFS |
 |---|---|---|---|
@@ -240,6 +244,11 @@ Every camera's audio was measured, never assumed. All six are `pcm_s16be`
 | cam4_hallway | MStar | 2.00 | -51.30 |
 | cam5_laundry | MStar | 2.00 | -46.07 |
 | cam6_extra | Allwinner | 1.95 | -37.70 |
+
+**September 28 update:** cam2's 0.5.8 pilot now measures a ratio of **1.0**
+(normal audio pacing). Its compatible timestamp normalization remains enabled;
+the other cameras retain their existing configuration. See the
+[firmware pilot](docs/mstar-058-pilot.md) for test limits and remaining faults.
 
 **Watch which ratio you measure.** `decoded / requested` exposes the fault at
 2.00; `wall / decoded` reads a healthy 1.01 and hides it completely, because

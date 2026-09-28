@@ -4,8 +4,9 @@
 # Data-saver viewing consumes that LOCAL live stream, not a third camera input.
 # See docs/setup-review-and-data-saver.md for architecture and operating limits.
 #
-# All six cameras emit PCM audio with a half-speed source clock. Full live feeds
-# rebuild audio timestamps and reset copied video PTS/DTS to remove mux delay.
+# Older firmware measured a half-speed PCM audio clock; cam2's 0.5.8 pilot now
+# measures normal pacing. Compatible audio normalization remains on all feeds.
+# Full live feeds also reset copied video PTS/DTS to remove mux delay.
 # Proven recording arguments remain separate and unchanged.
 # Cam6 still has RTSP_STREAM=both on-camera; the other cameras use high.
 # Do not enable extra camera streams as a shortcut to lower-bandwidth viewing.
