@@ -1,5 +1,9 @@
 # Unattended recovery and independent alerts — design review, 2026-09-12
 
+October 18 implementation and commissioning status:
+[automatic monitoring](automatic-monitoring.md). The text below is the earlier
+design review; consult that newer document for what is installed and pending.
+
 ## Recommendation and current status
 
 Use a Windows watchdog for observation and limited recovery, plus an external

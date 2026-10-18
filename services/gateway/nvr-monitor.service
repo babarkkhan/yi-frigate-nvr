@@ -1,0 +1,17 @@
+[Unit]
+Description=Independent home-camera outage monitor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/nvr-monitor/nvr-monitor.py --config /etc/nvr-monitor/config.json
+TimeoutStartSec=130
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nvr-monitor
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077

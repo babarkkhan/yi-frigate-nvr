@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--secret-file', default='/etc/caddy/cam-proxy-secret.caddy')
     parser.add_argument('--base-url', default='http://127.0.0.1:18971')
     parser.add_argument('--max-age', type=float, default=120)
+    parser.add_argument('--expected', nargs='+', help='Explicit required camera names; intentional offline cameras are omitted')
     args = parser.parse_args()
     parts = shlex.split(Path(args.secret_file).read_text())
     if len(parts) != 3 or parts[:2] != ['header_up', 'X-Proxy-Secret']:
@@ -52,7 +53,7 @@ def main():
     if status != 200 or secret.encode() in body:
         problems.append('config unavailable or contains unredacted proxy secret')
     config = json.loads(body) if status == 200 else {}
-    expected = {name for name, camera in config.get('cameras', {}).items()
+    expected = set(args.expected) if args.expected else {name for name, camera in config.get('cameras', {}).items()
                 if camera.get('enabled', True)}
     if not expected:
         problems.append('no enabled cameras in config')
