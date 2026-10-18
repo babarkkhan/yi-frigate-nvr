@@ -1,7 +1,10 @@
 import importlib.util
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -11,6 +14,23 @@ def result(code=0,text='true'):
     return SimpleNamespace(returncode=code,stdout=text,stderr='')
 
 class RecoveryTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'posix', 'Linux recovery lock')
+    def test_readonly_lock_preserves_file_and_excludes_other_process(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t)/'recovery.lock'
+            path.write_text('preserved')
+            path.chmod(0o444)
+            with r.open_recovery_lock(path) as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                other = subprocess.run([sys.executable, '-c',
+                    'import fcntl,sys; f=open(sys.argv[1]); fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)',
+                    str(path)], capture_output=True)
+                self.assertNotEqual(other.returncode, 0)
+            self.assertEqual(path.read_text(), 'preserved')
+            with r.open_recovery_lock(path) as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
     def test_recovered_does_not_touch_gpu_or_services(self):
         with patch.object(r,'fresh_state',return_value=[]),patch.object(r,'run') as run:
             self.assertEqual(r.diagnose({'expected':['cam1_mensroom']})['action'],'none')

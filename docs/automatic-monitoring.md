@@ -3,7 +3,7 @@
 Implementation prepared October 18, 2026. This supersedes the earlier design
 review where it differs. No AI session is required to run these components.
 
-## Deployment status at preparation
+## Deployment status
 
 - The independent Hetzner `nvr-monitor.timer` is enabled. It checks the five
   required cameras through the authenticated private gateway and checks the
@@ -11,20 +11,27 @@ review where it differs. No AI session is required to run these components.
 - The restricted Windows-to-VPS heartbeat was delivered successfully during
   commissioning. Its dedicated SSH key cannot open a shell, forward ports or
   write arbitrary paths; it can submit only a bounded health JSON object.
-- The native Windows runtime and watchdog installer are prepared. Registration
-  of the boot-time S4U task requires Windows UAC approval. It is **not confirmed
-  installed or recovering automatically** at this preparation checkpoint.
-- Notification delivery is **not configured**: the owner has been asked for
-  an alert destination. No test notification has been sent or acknowledged.
-- The router reservation is **not saved**: router administrator access is still
-  needed. The intended reservation preserves the PC's current Ethernet address;
-  its address and adapter MAC are retained privately, not published here.
+- The native Windows watchdog is installed as `HomeNVR-Health-Recovery` with
+  startup and minute triggers. After UAC approval, commissioning passed under
+  the actual S4U task account at 21:16 Riyadh on October 18: native camera health,
+  restricted SSH heartbeat delivery and read-only WSL diagnosis all succeeded.
+  Automatic recovery is enabled. The VPS independently received subsequent
+  scheduled heartbeats and confirmed all five required cameras recording.
+- A controlled cam2 stream-service failure was detected by both monitors. After
+  the lock fix described below, the scheduled task requested a targeted cam2
+  restart at 21:29 Riyadh, capture resumed at about 5 FPS, and fresh H.264/AAC
+  recordings from all five active cameras decoded without reported errors.
+- Notification delivery is **not configured**. The owner dropped alert setup
+  from the current scope on October 18. No test notification was sent.
+- The router reservation is **not saved**. The owner also dropped router edits
+  from the current scope. The PC remains on its existing DHCP lease; its address
+  and adapter MAC are retained privately, not published here.
 - Cam6 is explicitly excluded as intentionally unplugged. Add it to both
   monitors' `expected` lists when it returns to service; do not infer maintenance
   from a failed feed.
 
-Do not describe alerts or unattended recovery as accepted until the remaining
-commissioning steps below have passed.
+Independent health observation remains enabled without notification delivery.
+Do not describe alerts or DHCP reservation as completed.
 
 ## Architecture
 
@@ -128,5 +135,23 @@ cross-process exclusion, date boundaries, stale/missing recordings, invalid FPS,
 WSL-free observation, and safe recovery classification. Live native observation
 passed for all five required cameras. A dedicated heartbeat reached the VPS,
 and the independent five-camera check passed. The timer unit validated and ran.
-Windows UAC, notification delivery, controlled automatic recovery and DHCP
-reservation acceptance remain outstanding at this checkpoint.
+The Linux-specific recovery-lock regression also passed in WSL. The first live
+camera failure exercise exposed Linux `protected_regular` rejecting the root
+worker's write/create open of a lock owned by the manual operator. The worker
+and coordinated restart helper now lock a read-only descriptor without
+truncating the shared file. Cross-process exclusion and acquisition by root
+against the existing operator-owned lock were verified.
+Windows task registration, scheduled-account commissioning and the corrected
+targeted camera-recovery path passed live checks. The failed first exercise was
+restored manually. Its cooldown was explicitly waived once for the repeat
+exercise; permanent debounce, cooldown and retry limits were unchanged, and
+both attempts' evidence was retained privately.
+Three consecutive healthy scheduled observations confirmed recovery by 21:32
+Riyadh. The two deliberate commissioning attempts were then archived and removed
+from the production repair budget so they would not block a genuine incident;
+the configured limits remain unchanged.
+
+A planned Windows reboot, actual GPU-reset recovery and whole-stack failure
+recovery have not been exercised under the new watchdog. Passing the targeted
+camera test does not establish those paths. Alerts and router changes were
+subsequently removed from scope by the owner.

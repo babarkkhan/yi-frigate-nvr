@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded WSL recovery worker; called only after the Windows observation phase."""
 import json
+import os
 from pathlib import Path
 import re
 import socket
@@ -93,10 +94,20 @@ finally:c.close()
 '''
 
 
+def open_recovery_lock(path='/tmp/home-nvr-restart.lock'):
+    # Linux protected_regular rejects root opening another user's /tmp file
+    # with O_CREAT. flock needs only a read descriptor, not file write access.
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+    except FileExistsError:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    return os.fdopen(fd, 'r')
+
+
 def apply(request):
     import fcntl
     # Same lock used by the coordinated manual NVR restart helper.
-    with open('/tmp/home-nvr-restart.lock', 'a') as lock:
+    with open_recovery_lock() as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         # Re-diagnose immediately; never execute a stale proposed repair.
         d = diagnose(request)

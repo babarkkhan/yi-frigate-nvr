@@ -22,7 +22,12 @@ if [[ "$mode" == --check ]]; then
   bash "$script_dir/nvr-status.sh"
   exit $?
 fi
-exec 9>/tmp/home-nvr-restart.lock
+# Create once without truncation; read-only flock works across the manual user
+# and root watchdog under Linux protected_regular in the sticky /tmp directory.
+if [[ ! -e /tmp/home-nvr-restart.lock ]]; then
+  (set -o noclobber; : >/tmp/home-nvr-restart.lock) 2>/dev/null || [[ -f /tmp/home-nvr-restart.lock ]]
+fi
+exec 9</tmp/home-nvr-restart.lock
 flock -n 9 || { echo 'ERROR: another NVR restart is running' >&2; exit 2; }
 trap 'echo "ERROR: recovery stopped at line $LINENO; inspect container health before retrying. Tailscale may be stopped." >&2' ERR
 echo 'Stopping Tailscale before replacing its shared network namespace.'
